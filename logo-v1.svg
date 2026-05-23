@@ -1,0 +1,68 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Golden Yellow Background -->
+  <rect width="400" height="400" fill="#F4C430"/>
+  
+  <!-- Rooster Body (Red) -->
+  <g fill="#C41E3A">
+    <!-- Main body/chest -->
+    <ellipse cx="200" cy="200" rx="70" ry="80"/>
+    
+    <!-- Head -->
+    <circle cx="200" cy="110" r="35"/>
+    
+    <!-- Beak -->
+    <path d="M 235 105 L 260 100 L 240 115 Z"/>
+    
+    <!-- Comb (top of head) -->
+    <path d="M 200 75 Q 210 50 220 60 Q 225 45 230 65 Q 235 55 240 70 Q 210 65 200 75"/>
+    
+    <!-- Wattle (under chin) -->
+    <ellipse cx="195" cy="135" rx="8" ry="12" fill="#C41E3A"/>
+    
+    <!-- Wings -->
+    <ellipse cx="155" cy="210" rx="40" ry="60" transform="rotate(-25 155 210)"/>
+    <ellipse cx="245" cy="210" rx="40" ry="60" transform="rotate(25 245 210)"/>
+    
+    <!-- Tail feathers (tall) -->
+    <path d="M 200 160 Q 180 100 170 40 Q 185 80 200 160"/>
+    <path d="M 200 160 Q 200 80 200 20 Q 210 80 200 160"/>
+    <path d="M 200 160 Q 220 100 230 40 Q 215 80 200 160"/>
+    
+    <!-- Legs -->
+    <rect x="185" y="270" width="8" height="60" rx="4"/>
+    <rect x="207" y="270" width="8" height="60" rx="4"/>
+    
+    <!-- Feet -->
+    <line x1="189" y1="330" x2="170" y2="345" stroke="#C41E3A" stroke-width="6" stroke-linecap="round"/>
+    <line x1="189" y1="330" x2="189" y2="350" stroke="#C41E3A" stroke-width="6" stroke-linecap="round"/>
+    <line x1="189" y1="330" x2="210" y2="345" stroke="#C41E3A" stroke-width="6" stroke-linecap="round"/>
+    
+    <line x1="211" y1="330" x2="192" y2="345" stroke="#C41E3A" stroke-width="6" stroke-linecap="round"/>
+    <line x1="211" y1="330" x2="211" y2="350" stroke="#C41E3A" stroke-width="6" stroke-linecap="round"/>
+    <line x1="211" y1="330" x2="230" y2="345" stroke="#C41E3A" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Eye (Yellow) -->
+  <circle cx="210" cy="105" r="5" fill="#F4C430"/>
+  
+  <!-- Text: "Yolk & Co." integrated -->
+  <g>
+    <!-- "Yolk" on left side of body -->
+    <text x="140" y="215" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#C41E3A" text-anchor="middle">
+      Yolk
+    </text>
+    
+    <!-- "&" symbol -->
+    <text x="200" y="265" font-family="Georgia, serif" font-size="28" font-weight="bold" fill="#C41E3A" text-anchor="middle">
+      &
+    </text>
+    
+    <!-- "Co." on right side -->
+    <text x="260" y="215" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#C41E3A" text-anchor="middle">
+      Co.
+    </text>
+  </g>
+  
+  <!-- Optional: Decorative circle outline -->
+  <circle cx="200" cy="200" r="185" fill="none" stroke="#C41E3A" stroke-width="3" opacity="0.3"/>
+</svg>
