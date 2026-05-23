@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en" x-data="eggApp()" :class="{ 'dark': darkMode }">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EggTrack Pro - Inventory & Sales</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
+
+    <nav class="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-xs px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl">🥚</span>
+            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">EggTrack Pro</span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button @click="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                <span x-show="!darkMode">🌙</span>
+                <span x-show="darkMode">☀️</span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 space-y-6">
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Cash on Hand</p>
+                <p class="text-xl md:text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400" x-text="formatPHP(getCashOnHand())"></p>
+                <span class="text-[10px] text-slate-400">Revenue - Expenses</span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Net Profit</p>
+                <p class="text-xl md:text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400" x-text="formatPHP(getNetProfit())"></p>
+                <span class="text-[10px] text-slate-400">Revenue - COGS</span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Accounts Receivable</p>
+                <p class="text-xl md:text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400" x-text="formatPHP(getOutstandingLoans())"></p>
+                <span class="text-[10px] text-slate-400">Unpaid Customer Loans</span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Stock</p>
+                <p class="text-xl md:text-2xl font-bold mt-1 text-purple-600 dark:text-purple-400" x-text="inventory"></p>
+                <span class="text-[10px] text-slate-400">Available Eggs</span>
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6">
+
+            <!-- SALES FORM -->
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                    <span>📦</span>
+                    <span>Record Sale</span>
+                </h2>
+
+                <div class="space-y-3">
+                    <input type="text" placeholder="Customer Name" x-model="saleForm.customer"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+
+                    <select x-model="saleForm.type" @change="updateSalePrice()"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option>Regular</option>
+                        <option>Loaned</option>
+                    </select>
+
+                    <input type="number" placeholder="Quantity" x-model.number="saleForm.quantity" min="1"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+
+                    <div class="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center">
+                        <p class="text-xs text-slate-600 dark:text-slate-400">Unit Price</p>
+                        <p class="text-xl font-bold text-amber-600 dark:text-amber-400" x-text="formatPHP(saleForm.unitPrice)"></p>
+                    </div>
+
+                    <button @click="submitSale()"
+                        class="w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors">
+                        Record Sale
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESTOCK FORM -->
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                    <span>🛒</span>
+                    <span>Restock</span>
+                </h2>
+
+                <div class="space-y-3">
+                    <input type="number" placeholder="Quantity to Buy" x-model.number="restockForm.quantity" min="1"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                    <input type="number" placeholder="Cost per Unit" x-model.number="restockForm.unitCost" min="0" step="0.01"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                    <div class="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center">
+                        <p class="text-xs text-slate-600 dark:text-slate-400">Total Cost</p>
+                        <p class="text-xl font-bold text-blue-600 dark:text-blue-400" x-text="formatPHP(restockForm.quantity * restockForm.unitCost)"></p>
+                    </div>
+
+                    <button @click="submitRestock()"
+                        class="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors">
+                        Restock Now
+                    </button>
+                </div>
+            </div>
+
+            <!-- EXPENSE FORM -->
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                    <span>💳</span>
+                    <span>Record Expense</span>
+                </h2>
+
+                <div class="space-y-3">
+                    <select x-model="expenseForm.category"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <option>Transportation</option>
+                        <option>Utilities</option>
+                        <option>Maintenance</option>
+                        <option>Feed Supplies</option>
+                        <option>Veterinary</option>
+                    </select>
+
+                    <input type="number" placeholder="Amount" x-model.number="expenseForm.amount" min="0" step="0.01"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
+
+                    <input type="text" placeholder="Notes (optional)" x-model="expenseForm.notes"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
+
+                    <button @click="submitExpense()"
+                        class="w-full px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-lg transition-colors">
+                        Record Expense
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- LEDGER SECTION -->
+        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+
+            <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                <button @click="currentTab = 'sales'"
+                    :class="currentTab === 'sales' ? 'bg-white dark:bg-slate-800 border-b-2 border-amber-500' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'"
+                    class="flex-1 px-4 py-3 font-semibold text-center transition-all">
+                    Sales Ledger
+                </button>
+                <button @click="currentTab = 'expenses'"
+                    :class="currentTab === 'expenses' ? 'bg-white dark:bg-slate-800 border-b-2 border-rose-500' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'"
+                    class="flex-1 px-4 py-3 font-semibold text-center transition-all">
+                    Expenses Ledger
+                </button>
+            </div>
+
+            <div class="p-4 overflow-x-auto">
+
+                <div x-show="currentTab === 'sales'">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                                <th class="pb-2">Date</th>
+                                <th class="pb-2">Customer</th>
+                                <th class="pb-2">Tier</th>
+                                <th class="pb-2 text-center">Qty</th>
+                                <th class="pb-2 text-right">Total Invoice</th>
+                                <th class="pb-2 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="sale in sales" :key="sale.id">
+                                <tr class="border-b border-slate-100 dark:border-slate-700/50">
+                                    <td class="py-2.0 text-slate-500" x-text="sale.date"></td>
+                                    <td class="py-2 font-medium" x-text="sale.customer"></td>
+                                    <td class="py-2">
+                                        <span :class="sale.type === 'Loaned' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'" class="px-1.5 py-0.5 rounded text-[10px]" x-text="sale.type"></span>
+                                    </td>
+                                    <td class="py-2 text-center" x-text="sale.quantity"></td>
+                                    <td class="py-2 text-right font-semibold" x-text="formatPHP(sale.quantity * sale.unitPrice)"></td>
+                                    <td class="py-2 text-center">
+                                        <span x-show="!sale.paid" class="text-amber-500 font-bold text-[10px]">UNPAID</span>
+                                        <button x-show="sale.type === 'Loaned' && !sale.paid" @click="collectLoan(sale.id)" class="text-emerald-500 hover:text-emerald-600 font-bold text-[10px] underline">
+                                            COLLECT
+                                        </button>
+                                        <span x-show="sale.paid" class="text-emerald-500 font-bold text-[10px]">PAID</span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div x-show="currentTab === 'expenses'">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                                <th class="pb-2">Date</th>
+                                <th class="pb-2">Category</th>
+                                <th class="pb-2">Description</th>
+                                <th class="pb-2 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="exp in expenses" :key="exp.id">
+                                <tr class="border-b border-slate-100 dark:border-slate-700/50">
+                                    <td class="py-2 text-slate-500" x-text="exp.date"></td>
+                                    <td class="py-2 font-medium text-rose-500" x-text="exp.category"></td>
+                                    <td class="py-2 text-slate-400" x-text="exp.notes || '-'"></td>
+                                    <td class="py-2 text-right font-bold text-slate-700 dark:text-slate-300" x-text="formatPHP(exp.amount)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function eggApp() {
+            return {
+                // Application Configuration & Fluctuations Engine
+                config: {
+                    regularPrice: 250,
+                    loanPrice: 270
+                },
+
+                // Reactive Global Core Memory Banks
+                darkMode: false,
+                inventory: 100,
+                sales: [],
+                expenses: [],
+                currentTab: 'sales',
+
+                // Local Isolated Transient UI Form Formats
+                saleForm: {
+                    customer: '',
+                    quantity: 1,
+                    type: 'Regular',
+                    unitPrice: 250
+                },
+                restockForm: {
+                    quantity: 100,
+                    unitCost: 180
+                },
+                expenseForm: {
+                    category: 'Transportation',
+                    amount: '',
+                    notes: ''
+                },
+
+                // Application Initialization Hook
+                init() {
+                    // Pull persistent records from browser cache sandbox
+                    if (localStorage.getItem('egg_app_data')) {
+                        const savedData = JSON.parse(localStorage.getItem('egg_app_data'));
+                        this.inventory = savedData.inventory ?? 100;
+                        this.sales = savedData.sales ?? [];
+                        this.expenses = savedData.expenses ?? [];
+                        if (savedData.config) this.config = savedData.config;
+                    }
+                    if (localStorage.getItem('egg_dark_mode') === 'true') {
+                        this.darkMode = true;
+                    }
+                    this.updateSalePrice();
+                },
+
+                // Reactive Storage Sync State Mutator
+                persistState() {
+                    localStorage.setItem('egg_app_data', JSON.stringify({
+                        inventory: this.inventory,
+                        sales: this.sales,
+                        expenses: this.expenses,
+                        config: this.config
+                    }));
+                },
+
+                toggleTheme() {
+                    this.darkMode = !this.darkMode;
+                    localStorage.setItem('egg_dark_mode', this.darkMode);
+                },
+
+                // Conditional Price Selection Evaluator
+                updateSalePrice() {
+                    this.saleForm.unitPrice = this.saleForm.type === 'Regular' ?
+                        this.config.regularPrice :
+                        this.config.loanPrice;
+                },
+
+                // Business Computation & Real-time Analytic Formula Aggregations
+                getCashOnHand() {
+                    let totalCollectedRevenue = this.sales
+                        .filter(s => s.paid)
+                        .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+
+                    let totalOutflowExpenses = this.expenses
+                        .reduce((sum, e) => sum + e.amount, 0);
+
+                    return totalCollectedRevenue - totalOutflowExpenses;
+                },
+
+                getNetProfit() {
+                    let totalGrossRevenue = this.sales
+                        .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+
+                    let costOfGoodsSold = this.expenses
+                        .filter(e => e.category === 'Restocking Cost')
+                        .reduce((sum, e) => sum + e.amount, 0);
+
+                    return totalGrossRevenue - costOfGoodsSold;
+                },
+
+                getOutstandingLoans() {
+                    return this.sales
+                        .filter(s => s.type === 'Loaned' && !s.paid)
+                        .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+                },
+
+                // Structural Transactions Form Pipelines
+                submitSale() {
+                    if (this.inventory < this.saleForm.quantity) {
+                        alert("Transaction Failure: Insufficient Egg Stock Available!");
+                        return;
+                    }
+
+                    this.sales.unshift({
+                        id: Date.now(),
+                        date: new Date().toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                        }),
+                        customer: this.saleForm.customer,
+                        quantity: this.saleForm.quantity,
+                        type: this.saleForm.type,
+                        unitPrice: this.saleForm.unitPrice,
+                        paid: this.saleForm.type === 'Regular'
+                    });
+
+                    this.inventory -= this.saleForm.quantity;
+                    this.persistState();
+
+                    // Flush fields except state configurations
+                    this.saleForm.customer = '';
+                    this.saleForm.quantity = 1;
+                    this.updateSalePrice();
+                },
+
+                submitRestock() {
+                    const cost = this.restockForm.quantity * this.restockForm.unitCost;
+
+                    // Automatically pipe into general expenses under strict categorization
+                    this.expenses.unshift({
+                        id: Date.now(),
+                        date: new Date().toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                        }),
+                        category: 'Restocking Cost',
+                        amount: cost,
+                        notes: `Ingested +${this.restockForm.quantity} units into active floor stock.`
+                    });
+
+                    this.inventory += this.restockForm.quantity;
+                    this.persistState();
+                },
+
+                submitExpense() {
+                    this.expenses.unshift({
+                        id: Date.now(),
+                        date: new Date().toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                        }),
+                        category: this.expenseForm.category,
+                        amount: this.expenseForm.amount,
+                        notes: this.expenseForm.notes
+                    });
+
+                    this.persistState();
+                    this.expenseForm.amount = '';
+                    this.expenseForm.notes = '';
+                },
+
+                collectLoan(id) {
+                    const targetSale = this.sales.find(s => s.id === id);
+                    if (targetSale) {
+                        targetSale.paid = true;
+                        this.persistState();
+                    }
+                },
+
+                formatPHP(value) {
+                    return '₱' + Number(value).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
