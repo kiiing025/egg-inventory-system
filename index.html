@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EggTrack Pro - Inventory & Sales</title>
+    <title>Yolk & Co. - Egg Inventory & Sales Management</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -13,9 +14,12 @@
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
 
     <nav class="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-xs px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-            <span class="text-2xl">🥚</span>
-            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">EggTrack Pro</span>
+        <div class="flex items-center space-x-3">
+            <img src="yolk.svg" alt="Yolk & Co. Logo" class="h-12 w-12 dark:invert">
+            <div>
+                <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-red-600 to-amber-500 bg-clip-text text-transparent">Yolk & Co.</span>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">Premium Egg Solutions</p>
+            </div>
         </div>
         <div class="flex items-center space-x-2">
             <button @click="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
