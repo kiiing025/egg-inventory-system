@@ -1,0 +1,44 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Golden Yellow Background -->
+  <rect width="400" height="400" fill="#FDB913"/>
+  
+  <!-- Minimalist Circle Background for Rooster -->
+  <circle cx="200" cy="140" r="90" fill="#C41E3A" opacity="0.1"/>
+  
+  <!-- Simplified Rooster (Top) -->
+  <g fill="#C41E3A">
+    <!-- Head -->
+    <circle cx="200" cy="100" r="28"/>
+    
+    <!-- Beak -->
+    <polygon points="228,100 250,98 235,110"/>
+    
+    <!-- Comb -->
+    <path d="M 195 72 Q 205 55 215 72 Q 210 60 205 72" fill="#C41E3A"/>
+    
+    <!-- Body -->
+    <ellipse cx="200" cy="165" rx="55" ry="65"/>
+    
+    <!-- Tail -->
+    <path d="M 200 130 Q 190 60 185 20" stroke="#C41E3A" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="M 200 130 Q 200 50 200 10" stroke="#C41E3A" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="M 200 130 Q 210 60 215 20" stroke="#C41E3A" stroke-width="12" fill="none" stroke-linecap="round"/>
+    
+    <!-- Legs -->
+    <line x1="185" y1="225" x2="185" y2="280" stroke="#C41E3A" stroke-width="8" stroke-linecap="round"/>
+    <line x1="215" y1="225" x2="215" y2="280" stroke="#C41E3A" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Eye -->
+  <circle cx="215" cy="95" r="4" fill="#FDB913"/>
+  
+  <!-- Company Name Below -->
+  <text x="200" y="320" font-family="Trebuchet MS, Arial, sans-serif" font-size="42" font-weight="bold" fill="#C41E3A" text-anchor="middle" letter-spacing="2">
+    Yolk & Co.
+  </text>
+  
+  <!-- Tagline -->
+  <text x="200" y="360" font-family="Arial, sans-serif" font-size="14" fill="#C41E3A" text-anchor="middle" opacity="0.8">
+    Premium Egg Solutions
+  </text>
+</svg>
