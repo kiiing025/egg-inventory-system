@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yolk.</title>
     <link rel="icon" type="image/png" href="HEAD.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="YOLK..png">
+    <meta name="theme-color" content="#f59e0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="YOLK">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -15,11 +21,13 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="sync-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
 
-    <nav class="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-xs px-4 py-3 flex items-center justify-between">
+    <nav class="sticky top-0 z-50 lg:ml-64 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-white/10 shadow-xs px-4 py-3 flex items-center justify-between">
         <div class="flex items-center space-x-3">
             <img src="YOLK..png" class="h-12 w-12 dark:invert">
         </div>
@@ -27,20 +35,63 @@
             <button @click="showReceiptModal = true" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors text-sm">
                 🧾 Weekly Report
             </button>
-            <button @click="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+            <button @click="toggleTheme()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-slate-100 transition-colors">
                 <span x-show="!darkMode">🌙</span>
                 <span x-show="darkMode">☀️</span>
             </button>
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto p-4 space-y-6">
+    <aside class="hidden lg:block fixed inset-y-0 left-0 w-64 border-r border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 px-4 py-5">
+        <div class="flex items-center gap-3">
+            <img src="YOLK..png" class="h-12 w-12 dark:invert">
+            <div>
+                <p class="text-sm font-bold">Yolk.</p>
+                <p class="text-xs text-slate-500">Inventory System</p>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Menu</p>
+            <div class="mt-3 space-y-1">
+                <button @click="currentPage = 'dashboard'" :class="navButtonClass('dashboard')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Dashboard</button>
+                <button @click="currentPage = 'sales'" :class="navButtonClass('sales')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Sales Ledger</button>
+                <button @click="currentPage = 'expenses'" :class="navButtonClass('expenses')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Expenses Ledger</button>
+                <button @click="currentPage = 'adjustments'" :class="navButtonClass('adjustments')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Manual Adjustments</button>
+                <button @click="currentPage = 'sync'" :class="navButtonClass('sync')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Cloud Sync</button>
+            </div>
+        </div>
+
+        <div class="mt-8 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-3">
+            <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">Quick View</p>
+            <p class="mt-2 text-[11px] text-slate-500">Cash</p>
+            <p class="text-lg font-bold text-emerald-400" x-text="formatPHP(getCashOnHand())"></p>
+            <p class="mt-2 text-[11px] text-slate-500">Stock</p>
+            <p class="text-lg font-bold text-purple-300" x-text="inventory + ' eggs'"></p>
+        </div>
+    </aside>
+
+    <main class="max-w-7xl mx-auto lg:ml-64 p-4 lg:p-6 space-y-6">
+        <div class="lg:hidden grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <button @click="currentPage = 'dashboard'" :class="mobileNavButtonClass('dashboard')" class="px-3 py-2 rounded-lg text-xs font-semibold transition-colors">Dashboard</button>
+            <button @click="currentPage = 'sales'" :class="mobileNavButtonClass('sales')" class="px-3 py-2 rounded-lg text-xs font-semibold transition-colors">Sales</button>
+            <button @click="currentPage = 'expenses'" :class="mobileNavButtonClass('expenses')" class="px-3 py-2 rounded-lg text-xs font-semibold transition-colors">Expenses</button>
+            <button @click="currentPage = 'adjustments'" :class="mobileNavButtonClass('adjustments')" class="px-3 py-2 rounded-lg text-xs font-semibold transition-colors">Adjustments</button>
+            <button @click="currentPage = 'sync'" :class="mobileNavButtonClass('sync')" class="px-3 py-2 rounded-lg text-xs font-semibold transition-colors">Sync</button>
+        </div>
+
+        <section x-show="currentPage === 'dashboard'" class="space-y-6">
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
-                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Cash on Hand</p>
+                <div class="flex items-start justify-between gap-2">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Cash on Hand</p>
+                    <button @click="openAdjustmentModal('cash')" class="px-2 py-1 rounded bg-emerald-50 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 transition-colors">
+                        Edit
+                    </button>
+                </div>
                 <p class="text-xl md:text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400" x-text="formatPHP(getCashOnHand())"></p>
-                <span class="text-[10px] text-slate-400">Revenue - Expenses</span>
+                <span class="text-[10px] text-slate-400">Revenue - Expenses + Adjustments</span>
             </div>
             <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Net Profit</p>
@@ -53,7 +104,12 @@
                 <span class="text-[10px] text-slate-400">Unpaid Customer Loans</span>
             </div>
             <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
-                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Stock</p>
+                <div class="flex items-start justify-between gap-2">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Stock</p>
+                    <button @click="openAdjustmentModal('stock')" class="px-2 py-1 rounded bg-purple-50 text-[10px] font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors">
+                        Edit
+                    </button>
+                </div>
                 <p class="text-xl md:text-2xl font-bold mt-1 text-purple-600 dark:text-purple-400" x-text="inventory"></p>
                 <span class="text-[10px] text-slate-400">Available Eggs</span>
             </div>
@@ -70,6 +126,7 @@
                 <div class="space-y-3 flex-1 flex flex-col">
                     <div class="space-y-3 flex-1">
                         <input type="text" placeholder="Customer Name" x-model="saleForm.customer" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <input type="date" x-model="saleForm.orderDate" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
                         <select x-model="saleForm.type" @change="updateSalePrice()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
                             <option>Regular</option>
                             <option>Loaned</option>
@@ -119,13 +176,15 @@
                 </h2>
                 <div class="space-y-3 flex-1 flex flex-col justify-between">
                     <div class="space-y-3">
-                        <select x-model="expenseForm.category" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500">
-                            <option>Transportation</option>
-                            <option>Utilities</option>
-                            <option>Maintenance</option>
-                            <option>Feed Supplies</option>
-                            <option>Veterinary</option>
-                        </select>
+                        <input type="text" placeholder="Category" x-model="expenseForm.category" list="expense-category-options" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <datalist id="expense-category-options">
+                            <option value="Transportation">
+                            <option value="Utilities">
+                            <option value="Maintenance">
+                            <option value="Feed Supplies">
+                            <option value="Veterinary">
+                            <option value="Tithing">
+                        </datalist>
                         <input type="number" placeholder="Amount" x-model.number="expenseForm.amount" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
                         <input type="text" placeholder="Notes (optional)" x-model="expenseForm.notes" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
                     </div>
@@ -137,25 +196,97 @@
 
         </div>
 
+        </section>
+
+        <section x-show="currentPage === 'adjustments'" class="space-y-6">
+        <!-- MANUAL ADJUSTMENTS -->
+        <div class="rounded-2xl bg-white/95 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-white/10 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                <h2 class="text-sm font-bold">Manual Adjustments</h2>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Emergency cash edits and stock corrections</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4 p-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Cash</h3>
+                        <span class="text-[10px] text-slate-400" x-text="cashAdjustments.length + ' records'"></span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                                    <th class="pb-2">Date</th>
+                                    <th class="pb-2 text-right">Change</th>
+                                    <th class="pb-2">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="adj in cashAdjustments.slice(0, 5)" :key="adj.id">
+                                    <tr class="border-b border-slate-100 dark:border-slate-700/50">
+                                        <td class="py-2 text-slate-500" x-text="adj.date"></td>
+                                        <td class="py-2 text-right font-bold" :class="adj.difference >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'" x-text="formatSignedPHP(adj.difference)"></td>
+                                        <td class="py-2 text-slate-500" x-text="adj.note || '-'"></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="cashAdjustments.length === 0">
+                                    <td colspan="3" class="py-4 text-center text-slate-400 text-xs">No cash adjustments yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Stock</h3>
+                        <span class="text-[10px] text-slate-400" x-text="stockAdjustments.length + ' records'"></span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                                    <th class="pb-2">Date</th>
+                                    <th class="pb-2 text-right">Change</th>
+                                    <th class="pb-2">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="adj in stockAdjustments.slice(0, 5)" :key="adj.id">
+                                    <tr class="border-b border-slate-100 dark:border-slate-700/50">
+                                        <td class="py-2 text-slate-500" x-text="adj.date"></td>
+                                        <td class="py-2 text-right font-bold" :class="adj.difference >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'" x-text="formatSignedNumber(adj.difference)"></td>
+                                        <td class="py-2 text-slate-500" x-text="adj.note || '-'"></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="stockAdjustments.length === 0">
+                                    <td colspan="3" class="py-4 text-center text-slate-400 text-xs">No stock adjustments yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </section>
+
         <!-- LEDGER SECTION -->
-        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                <button @click="currentTab = 'sales'" :class="currentTab === 'sales' ? 'bg-white dark:bg-slate-800 border-b-2 border-amber-500' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="flex-1 px-4 py-3 font-semibold text-center transition-all">
-                    Sales Ledger
-                </button>
-                <button @click="currentTab = 'expenses'" :class="currentTab === 'expenses' ? 'bg-white dark:bg-slate-800 border-b-2 border-rose-500' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="flex-1 px-4 py-3 font-semibold text-center transition-all">
-                    Expenses Ledger
-                </button>
+        <section x-show="currentPage === 'sales'" class="space-y-6">
+        <div class="rounded-2xl bg-white/95 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-white/10 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                <h2 class="text-sm font-bold">Sales Ledger</h2>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Customer orders, paid dates, and unpaid loans</p>
             </div>
 
             <div class="p-4 overflow-x-auto">
 
                 <!-- SALES TABLE -->
-                <div x-show="currentTab === 'sales'">
+                <div>
                     <table class="w-full text-left text-xs border-collapse">
                         <thead>
                             <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
-                                <th class="pb-2">Date</th>
+                                <th class="pb-2">Order Date</th>
+                                <th class="pb-2">Paid Date</th>
                                 <th class="pb-2">Customer</th>
                                 <th class="pb-2">Tier</th>
                                 <th class="pb-2 text-center">Qty</th>
@@ -167,7 +298,8 @@
                         <tbody>
                             <template x-for="sale in sales" :key="sale.id">
                                 <tr class="border-b border-slate-100 dark:border-slate-700/50">
-                                    <td class="py-2 text-slate-500" x-text="sale.dateDisplay || sale.date"></td>
+                                    <td class="py-2 text-slate-500" x-text="sale.orderDateDisplay || sale.dateDisplay || formatDisplayDate(sale.orderDate || sale.date)"></td>
+                                    <td class="py-2 text-slate-500" x-text="sale.paid ? (sale.paidDateDisplay || formatDisplayDate(sale.paidDate || sale.orderDate || sale.date)) : '-'"></td>
                                     <td class="py-2 font-medium" x-text="sale.customer"></td>
                                     <td class="py-2">
                                         <span :class="sale.type === 'Loaned' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'" class="px-1.5 py-0.5 rounded text-[10px]" x-text="sale.type"></span>
@@ -189,14 +321,26 @@
                                 </tr>
                             </template>
                             <tr x-show="sales.length === 0">
-                                <td colspan="7" class="py-6 text-center text-slate-400 text-xs">No sales recorded yet.</td>
+                                <td colspan="8" class="py-6 text-center text-slate-400 text-xs">No sales recorded yet.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
+            </div>
+        </div>
+        </section>
+
+        <section x-show="currentPage === 'expenses'" class="space-y-6">
+        <div class="rounded-2xl bg-white/95 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-white/10 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                <h2 class="text-sm font-bold">Expenses Ledger</h2>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Business expenses and custom categories</p>
+            </div>
+
+            <div class="p-4 overflow-x-auto">
                 <!-- EXPENSES TABLE -->
-                <div x-show="currentTab === 'expenses'">
+                <div>
                     <table class="w-full text-left text-xs border-collapse">
                         <thead>
                             <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
@@ -230,8 +374,101 @@
 
             </div>
         </div>
+        </section>
+
+        <section x-show="currentPage === 'sync'" class="space-y-6">
+        <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
+            <div class="rounded-2xl bg-white/95 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-bold">Cloud Sync</h2>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400" x-text="syncMessage"></p>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" :class="syncStatusClass()" x-text="syncStatusLabel()"></span>
+                </div>
+
+                <div class="p-4 space-y-4">
+                    <template x-if="!isSyncConfigured()">
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 p-4 text-sm">
+                            Add your free Supabase URL and anon key in sync-config.js to connect laptop and iPhone storage.
+                        </div>
+                    </template>
+
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        <input type="email" x-model="syncForm.email" placeholder="Supabase email" autocomplete="email" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <input type="password" x-model="syncForm.password" placeholder="Password" autocomplete="current-password" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+
+                    <div class="grid sm:grid-cols-4 gap-2">
+                        <button @click="signInSync()" :disabled="syncBusy || !isSyncConfigured()" class="px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Sign In</button>
+                        <button @click="pullSync(true)" :disabled="syncBusy || !syncUser" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Pull</button>
+                        <button @click="pushSync(true)" :disabled="syncBusy || !syncUser" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Push</button>
+                        <button @click="signOutSync()" :disabled="syncBusy || !syncUser" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl bg-white/95 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                    <h2 class="text-sm font-bold">Connected Data</h2>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400" x-text="syncLastSyncedAt ? 'Last sync: ' + syncLastSyncedAt : 'No cloud sync yet'"></p>
+                </div>
+                <div class="p-4 grid grid-cols-2 gap-3 text-sm">
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sales</p>
+                        <p class="mt-1 text-2xl font-bold" x-text="sales.length"></p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Expenses</p>
+                        <p class="mt-1 text-2xl font-bold" x-text="expenses.length"></p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cash Edits</p>
+                        <p class="mt-1 text-2xl font-bold" x-text="cashAdjustments.length"></p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock Edits</p>
+                        <p class="mt-1 text-2xl font-bold" x-text="stockAdjustments.length"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </section>
 
     </main>
+
+    <!-- ADJUSTMENT MODAL -->
+    <div x-show="adjustmentModal.open" @click="closeAdjustmentModal()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
+
+    <div x-show="adjustmentModal.open" class="fixed inset-x-4 top-20 mx-auto max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-2xl z-50 border border-slate-200 dark:border-slate-700 overflow-hidden" style="display: none;" x-transition>
+        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700" :class="adjustmentModal.type === 'cash' ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-purple-50 dark:bg-purple-900/20'">
+            <h2 class="text-lg font-bold" x-text="adjustmentModal.type === 'cash' ? 'Edit Cash on Hand' : 'Edit Current Stock'"></h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Current:
+                <span class="font-bold" x-text="adjustmentModal.type === 'cash' ? formatPHP(getCashOnHand()) : inventory + ' eggs'"></span>
+            </p>
+        </div>
+
+        <div class="p-5 space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1" x-text="adjustmentModal.type === 'cash' ? 'New cash amount' : 'New stock count'"></label>
+                <input type="number" x-model="adjustmentModal.value" :step="adjustmentModal.type === 'cash' ? '0.01' : '1'" :min="adjustmentModal.type === 'stock' ? '0' : null" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2" :class="adjustmentModal.type === 'cash' ? 'focus:ring-emerald-500' : 'focus:ring-purple-500'">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Note</label>
+                <input type="text" x-model="adjustmentModal.note" placeholder="Optional reason" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400">
+            </div>
+        </div>
+
+        <div class="flex gap-3 px-5 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+            <button @click="closeAdjustmentModal()" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold transition-colors">
+                Cancel
+            </button>
+            <button @click="saveAdjustment()" class="flex-1 px-4 py-2 rounded-lg text-white font-semibold transition-colors" :class="adjustmentModal.type === 'cash' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-purple-500 hover:bg-purple-600'">
+                Save
+            </button>
+        </div>
+    </div>
 
     <!-- RECEIPT MODAL -->
     <div x-show="showReceiptModal" @click="showReceiptModal = false" class="fixed inset-0 bg-black/30 z-40" style="display: none;"></div>
@@ -383,10 +620,21 @@
                 inventory: 100,
                 sales: [],
                 expenses: [],
+                cashAdjustments: [],
+                stockAdjustments: [],
+                currentPage: 'dashboard',
                 currentTab: 'sales',
+                syncClient: null,
+                syncUser: null,
+                syncStatus: 'not-configured',
+                syncMessage: 'Cloud sync is not configured yet.',
+                syncBusy: false,
+                syncLastSyncedAt: '',
+                syncAutoPushTimer: null,
 
                 saleForm: {
                     customer: '',
+                    orderDate: '',
                     quantity: 1,
                     type: 'Regular',
                     unitPrice: 250
@@ -399,6 +647,16 @@
                     category: 'Transportation',
                     amount: '',
                     notes: ''
+                },
+                adjustmentModal: {
+                    open: false,
+                    type: 'cash',
+                    value: '',
+                    note: ''
+                },
+                syncForm: {
+                    email: '',
+                    password: ''
                 },
 
                 showExportModal: false,
@@ -424,34 +682,299 @@
                     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
                     this.exportForm.endDate = today.toISOString().split('T')[0];
                     this.exportForm.startDate = lastWeek.toISOString().split('T')[0];
+                    this.saleForm.orderDate = this.formatDateForInput(today);
 
                     if (localStorage.getItem('egg_app_data')) {
                         const savedData = JSON.parse(localStorage.getItem('egg_app_data'));
-                        this.inventory = savedData.inventory || 100;
-                        this.sales = savedData.sales || [];
-                        this.expenses = savedData.expenses || [];
-                        if (savedData.config) this.config = savedData.config;
+                        this.applyPersistedState(savedData);
                     }
-                    if (localStorage.getItem('egg_dark_mode') === 'true') {
-                        this.darkMode = true;
-                        document.documentElement.classList.add('dark');
+                    const savedTheme = localStorage.getItem('egg_dark_mode');
+                    this.darkMode = savedTheme === 'true';
+                    if (typeof document !== 'undefined') {
+                        document.documentElement.classList.toggle('dark', this.darkMode);
                     }
                     this.updateSalePrice();
+                    this.initSync();
                 },
 
-                persistState() {
-                    localStorage.setItem('egg_app_data', JSON.stringify({
+                getPersistableState() {
+                    return {
                         inventory: this.inventory,
                         sales: this.sales,
                         expenses: this.expenses,
+                        cashAdjustments: this.cashAdjustments,
+                        stockAdjustments: this.stockAdjustments,
                         config: this.config
-                    }));
+                    };
+                },
+
+                applyPersistedState(savedData) {
+                    if (!savedData || typeof savedData !== 'object') return false;
+                    this.inventory = savedData.inventory ?? 100;
+                    this.sales = Array.isArray(savedData.sales) ? savedData.sales : [];
+                    this.expenses = Array.isArray(savedData.expenses) ? savedData.expenses : [];
+                    this.cashAdjustments = Array.isArray(savedData.cashAdjustments) ? savedData.cashAdjustments : [];
+                    this.stockAdjustments = Array.isArray(savedData.stockAdjustments) ? savedData.stockAdjustments : [];
+                    if (savedData.config) this.config = savedData.config;
+                    return true;
+                },
+
+                persistState(options = {}) {
+                    localStorage.setItem('egg_app_data', JSON.stringify(this.getPersistableState()));
+                    if (options.sync !== false) this.queueSyncPush();
+                },
+
+                getSyncConfig() {
+                    const defaults = {
+                        supabaseUrl: '',
+                        supabaseAnonKey: '',
+                        tableName: 'egg_app_state'
+                    };
+                    if (typeof window === 'undefined') return defaults;
+                    const config = window.YOLK_SYNC_CONFIG || {};
+                    return {
+                        supabaseUrl: String(config.supabaseUrl || '').trim(),
+                        supabaseAnonKey: String(config.supabaseAnonKey || '').trim(),
+                        tableName: String(config.tableName || defaults.tableName).trim() || defaults.tableName
+                    };
+                },
+
+                isSyncConfigured() {
+                    const config = this.getSyncConfig();
+                    return Boolean(config.supabaseUrl && config.supabaseAnonKey);
+                },
+
+                isSyncReady() {
+                    return Boolean(this.syncClient && this.syncUser && this.isSyncConfigured());
+                },
+
+                initSync() {
+                    if (!this.isSyncConfigured()) {
+                        this.syncStatus = 'not-configured';
+                        this.syncMessage = 'Cloud sync is not configured yet.';
+                        return false;
+                    }
+                    if (typeof window === 'undefined' || !window.supabase || !window.supabase.createClient) {
+                        this.syncStatus = 'unavailable';
+                        this.syncMessage = 'Supabase is not loaded yet.';
+                        return false;
+                    }
+                    if (!this.syncClient) {
+                        const config = this.getSyncConfig();
+                        this.syncClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                        this.syncStatus = 'signed-out';
+                        this.syncMessage = 'Cloud sync is ready. Sign in to connect this device.';
+                        this.syncClient.auth.getSession().then(({ data }) => {
+                            if (data && data.session && data.session.user) {
+                                this.syncUser = data.session.user;
+                                this.syncStatus = 'signed-in';
+                                this.syncMessage = 'Signed in. Pull or push data when you need it.';
+                            }
+                        }).catch(() => {
+                            this.syncStatus = 'signed-out';
+                        });
+                    }
+                    return true;
+                },
+
+                syncStatusLabel() {
+                    const labels = {
+                        'not-configured': 'Setup needed',
+                        unavailable: 'Unavailable',
+                        'signed-out': 'Signed out',
+                        'signed-in': 'Signed in',
+                        syncing: 'Syncing',
+                        synced: 'Synced',
+                        error: 'Error'
+                    };
+                    return labels[this.syncStatus] || this.syncStatus;
+                },
+
+                syncStatusClass() {
+                    const classes = {
+                        'not-configured': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
+                        unavailable: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200',
+                        'signed-out': 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300',
+                        'signed-in': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
+                        syncing: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200',
+                        synced: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
+                        error: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200'
+                    };
+                    return classes[this.syncStatus] || classes['signed-out'];
+                },
+
+                requireSyncReady() {
+                    if (!this.initSync()) return false;
+                    if (!this.syncUser) {
+                        this.syncStatus = 'signed-out';
+                        this.syncMessage = 'Sign in before syncing this device.';
+                        return false;
+                    }
+                    return true;
+                },
+
+                async signInSync() {
+                    if (!this.initSync()) return false;
+                    if (!this.syncForm.email || !this.syncForm.password) {
+                        alert('Enter your Supabase email and password.');
+                        return false;
+                    }
+
+                    this.syncBusy = true;
+                    this.syncStatus = 'syncing';
+                    this.syncMessage = 'Signing in...';
+                    try {
+                        const { data, error } = await this.syncClient.auth.signInWithPassword({
+                            email: this.syncForm.email,
+                            password: this.syncForm.password
+                        });
+                        if (error) throw error;
+                        this.syncUser = data.user;
+                        this.syncForm.password = '';
+                        this.syncStatus = 'signed-in';
+                        this.syncMessage = 'Signed in. Pulling cloud data...';
+                        await this.pullSync(false);
+                        return true;
+                    } catch (error) {
+                        this.syncStatus = 'error';
+                        this.syncMessage = error.message || 'Unable to sign in.';
+                        return false;
+                    } finally {
+                        this.syncBusy = false;
+                    }
+                },
+
+                async signOutSync() {
+                    if (!this.syncClient) return false;
+                    this.syncBusy = true;
+                    try {
+                        await this.syncClient.auth.signOut();
+                    } finally {
+                        this.syncUser = null;
+                        this.syncBusy = false;
+                        this.syncStatus = 'signed-out';
+                        this.syncMessage = 'Signed out on this device.';
+                    }
+                    return true;
+                },
+
+                queueSyncPush() {
+                    if (!this.isSyncReady()) return;
+                    if (typeof window === 'undefined' || !window.setTimeout) return;
+                    if (this.syncAutoPushTimer && window.clearTimeout) {
+                        window.clearTimeout(this.syncAutoPushTimer);
+                    }
+                    this.syncAutoPushTimer = window.setTimeout(() => {
+                        this.pushSync(false);
+                    }, 1500);
+                },
+
+                async pushSync(manual = true) {
+                    if (!this.requireSyncReady()) return false;
+                    if (!manual && this.syncBusy) return false;
+
+                    const config = this.getSyncConfig();
+                    if (manual) this.syncBusy = true;
+                    this.syncStatus = 'syncing';
+                    this.syncMessage = 'Saving this device to cloud...';
+                    try {
+                        const { error } = await this.syncClient
+                            .from(config.tableName)
+                            .upsert({
+                                user_id: this.syncUser.id,
+                                app_key: 'default',
+                                data: this.getPersistableState(),
+                                updated_at: new Date().toISOString()
+                            }, {
+                                onConflict: 'user_id,app_key'
+                            });
+                        if (error) throw error;
+                        this.syncStatus = 'synced';
+                        this.syncLastSyncedAt = new Date().toLocaleString();
+                        this.syncMessage = 'Laptop and iPhone data are connected for this account.';
+                        return true;
+                    } catch (error) {
+                        this.syncStatus = 'error';
+                        this.syncMessage = error.message || 'Cloud save failed.';
+                        return false;
+                    } finally {
+                        if (manual) this.syncBusy = false;
+                    }
+                },
+
+                async pullSync(manual = true) {
+                    if (!this.requireSyncReady()) return false;
+
+                    const config = this.getSyncConfig();
+                    if (manual) this.syncBusy = true;
+                    this.syncStatus = 'syncing';
+                    this.syncMessage = 'Loading cloud data...';
+                    try {
+                        const { data, error } = await this.syncClient
+                            .from(config.tableName)
+                            .select('data, updated_at')
+                            .eq('user_id', this.syncUser.id)
+                            .eq('app_key', 'default')
+                            .maybeSingle();
+                        if (error) throw error;
+                        if (!data) {
+                            this.syncStatus = 'signed-in';
+                            this.syncMessage = 'No cloud data yet. Push this device to start syncing.';
+                            return false;
+                        }
+                        this.applyPersistedState(data.data);
+                        this.persistState({ sync: false });
+                        this.syncStatus = 'synced';
+                        this.syncLastSyncedAt = data.updated_at ? new Date(data.updated_at).toLocaleString() : new Date().toLocaleString();
+                        this.syncMessage = 'Cloud data loaded on this device.';
+                        return true;
+                    } catch (error) {
+                        this.syncStatus = 'error';
+                        this.syncMessage = error.message || 'Cloud load failed.';
+                        return false;
+                    } finally {
+                        if (manual) this.syncBusy = false;
+                    }
                 },
 
                 toggleTheme() {
                     this.darkMode = !this.darkMode;
                     document.documentElement.classList.toggle('dark', this.darkMode);
                     localStorage.setItem('egg_dark_mode', String(this.darkMode));
+                },
+
+                navButtonClass(page) {
+                    return this.currentPage === page ?
+                        'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm' :
+                        'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white';
+                },
+
+                mobileNavButtonClass(page) {
+                    return this.currentPage === page ?
+                        'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm' :
+                        'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15 dark:hover:text-white';
+                },
+
+                getPageTitle() {
+                    const titles = {
+                        dashboard: 'Dashboard',
+                        sales: 'Sales Ledger',
+                        expenses: 'Expenses Ledger',
+                        adjustments: 'Manual Adjustments',
+                        sync: 'Cloud Sync'
+                    };
+                    return titles[this.currentPage] || 'Dashboard';
+                },
+
+                getPageEyebrow() {
+                    const labels = {
+                        dashboard: 'Today overview',
+                        sales: 'Customer orders',
+                        expenses: 'Business spending',
+                        adjustments: 'Manual corrections',
+                        sync: 'Laptop and iPhone storage'
+                    };
+                    return labels[this.currentPage] || 'Today overview';
                 },
 
                 updateSalePrice() {
@@ -466,7 +989,83 @@
                         .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
                     let totalOutflowExpenses = this.expenses
                         .reduce((sum, e) => sum + e.amount, 0);
-                    return totalCollectedRevenue - totalOutflowExpenses;
+                    return totalCollectedRevenue - totalOutflowExpenses + this.getCashAdjustmentTotal();
+                },
+
+                getCashAdjustmentTotal() {
+                    return this.cashAdjustments
+                        .reduce((sum, adj) => sum + Number(adj.difference || 0), 0);
+                },
+
+                openAdjustmentModal(type) {
+                    if (type !== 'cash' && type !== 'stock') return false;
+
+                    this.adjustmentModal = {
+                        open: true,
+                        type,
+                        value: type === 'cash' ? Number(this.getCashOnHand().toFixed(2)) : this.inventory,
+                        note: ''
+                    };
+                    return true;
+                },
+
+                closeAdjustmentModal() {
+                    this.adjustmentModal.open = false;
+                    this.adjustmentModal.value = '';
+                    this.adjustmentModal.note = '';
+                },
+
+                saveAdjustment() {
+                    if (this.adjustmentModal.value === '' || this.adjustmentModal.value === null) {
+                        alert('Please enter a new value.');
+                        return false;
+                    }
+
+                    const newValue = Number(this.adjustmentModal.value);
+                    if (!Number.isFinite(newValue)) {
+                        alert('Please enter a valid number.');
+                        return false;
+                    }
+
+                    const date = new Date().toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    const note = this.adjustmentModal.note.trim();
+
+                    if (this.adjustmentModal.type === 'cash') {
+                        const oldValue = this.getCashOnHand();
+                        const difference = newValue - oldValue;
+                        this.cashAdjustments.unshift({
+                            id: Date.now(),
+                            date,
+                            oldValue,
+                            newValue,
+                            difference,
+                            note
+                        });
+                    } else {
+                        if (!Number.isInteger(newValue) || newValue < 0) {
+                            alert('Stock must be a whole number and cannot be below zero.');
+                            return false;
+                        }
+
+                        const oldValue = this.inventory;
+                        const difference = newValue - oldValue;
+                        this.stockAdjustments.unshift({
+                            id: Date.now(),
+                            date,
+                            oldValue,
+                            newValue,
+                            difference,
+                            note
+                        });
+                        this.inventory = newValue;
+                    }
+
+                    this.persistState();
+                    this.closeAdjustmentModal();
+                    return true;
                 },
 
                 getNetProfit() {
@@ -489,22 +1088,27 @@
                         alert("Transaction Failure: Insufficient Egg Stock Available!");
                         return;
                     }
+                    const orderDate = this.saleForm.orderDate || this.formatDateForInput();
+                    const orderDateDisplay = this.formatDisplayDate(orderDate);
+                    const isPaid = this.saleForm.type === 'Regular';
                     this.sales.unshift({
                         id: Date.now(),
-                        date: new Date().toISOString(),
-                        dateDisplay: new Date().toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                        }),
+                        date: orderDate,
+                        orderDate,
+                        dateDisplay: orderDateDisplay,
+                        orderDateDisplay,
+                        paidDate: isPaid ? orderDate : '',
+                        paidDateDisplay: isPaid ? orderDateDisplay : '',
                         customer: this.saleForm.customer,
                         quantity: this.saleForm.quantity,
                         type: this.saleForm.type,
                         unitPrice: this.saleForm.unitPrice,
-                        paid: this.saleForm.type === 'Regular'
+                        paid: isPaid
                     });
                     this.inventory -= this.saleForm.quantity;
                     this.persistState();
                     this.saleForm.customer = '';
+                    this.saleForm.orderDate = this.formatDateForInput();
                     this.saleForm.quantity = 1;
                     this.updateSalePrice();
                 },
@@ -544,7 +1148,10 @@
                 collectLoan(id) {
                     const targetSale = this.sales.find(s => s.id === id);
                     if (targetSale) {
+                        const paidDate = this.formatDateForInput();
                         targetSale.paid = true;
+                        targetSale.paidDate = paidDate;
+                        targetSale.paidDateDisplay = this.formatDisplayDate(paidDate);
                         this.persistState();
                     }
                 },
@@ -577,6 +1184,40 @@
                     });
                 },
 
+                formatSignedPHP(value) {
+                    const numericValue = Number(value || 0);
+                    const sign = numericValue >= 0 ? '+' : '-';
+                    return sign + this.formatPHP(Math.abs(numericValue));
+                },
+
+                formatSignedNumber(value) {
+                    const numericValue = Number(value || 0);
+                    return (numericValue >= 0 ? '+' : '') + numericValue;
+                },
+
+                formatDateForInput(date = new Date()) {
+                    const parsedDate = new Date(date);
+                    const year = parsedDate.getFullYear();
+                    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(parsedDate.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                },
+
+                formatDisplayDate(dateValue) {
+                    if (!dateValue) return '';
+                    const dateString = String(dateValue);
+                    const parsedDate = dateString.includes('T') ?
+                        new Date(dateString) :
+                        new Date(`${dateString}T00:00:00`);
+
+                    if (Number.isNaN(parsedDate.getTime())) return dateString;
+
+                    return parsedDate.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                },
+
                 getWeeklyData() {
                     const start = new Date(this.exportForm.startDate);
                     const end = new Date(this.exportForm.endDate);
@@ -588,14 +1229,17 @@
                     const weeklySales = this.sales.filter(s => {
                         let saleDate;
                         try {
+                            const saleDateValue = s.orderDate || s.date;
                             // Try parsing as ISO string first
-                            if (s.date && s.date.includes('T')) {
-                                saleDate = new Date(s.date);
-                            } else if (s.date) {
+                            if (saleDateValue && saleDateValue.includes('T')) {
+                                saleDate = new Date(saleDateValue);
+                            } else if (saleDateValue && /^\d{4}-\d{2}-\d{2}$/.test(saleDateValue)) {
+                                saleDate = new Date(`${saleDateValue}T00:00:00`);
+                            } else if (saleDateValue) {
                                 // If it's a short format like "May 17", we need to construct it
                                 // Get current year as fallback
                                 const currentYear = new Date().getFullYear();
-                                const dateStr = s.date + ' ' + currentYear;
+                                const dateStr = saleDateValue + ' ' + currentYear;
                                 saleDate = new Date(dateStr);
                             }
                             console.log('Sale date:', s.customer, saleDate, 'in range?', saleDate >= start && saleDate <= end);
@@ -749,6 +1393,15 @@
                     }
                 }
             }
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').catch(error => {
+                    console.warn('Service worker registration failed:', error);
+                });
+            });
         }
     </script>
 </body>
