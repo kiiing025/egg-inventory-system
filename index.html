@@ -14,6 +14,7 @@
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
@@ -23,6 +24,9 @@
             <img src="YOLK..png" class="h-12 w-12 dark:invert">
         </div>
         <div class="flex items-center space-x-2">
+            <button @click="showReceiptModal = true" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors text-sm">
+                🧾 Weekly Report
+            </button>
             <button @click="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
                 <span x-show="!darkMode">🌙</span>
                 <span x-show="darkMode">☀️</span>
@@ -58,21 +62,25 @@
         <div class="grid md:grid-cols-3 gap-6">
 
             <!-- SALES FORM -->
-            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
                 <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
                     <span>📦</span>
                     <span>Record Sale</span>
                 </h2>
-                <div class="space-y-3">
-                    <input type="text" placeholder="Customer Name" x-model="saleForm.customer" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                    <select x-model="saleForm.type" @change="updateSalePrice()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                        <option>Regular</option>
-                        <option>Loaned</option>
-                    </select>
-                    <input type="number" placeholder="Quantity" x-model.number="saleForm.quantity" min="1" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                    <div class="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center">
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Unit Price</p>
-                        <p class="text-xl font-bold text-amber-600 dark:text-amber-400" x-text="formatPHP(saleForm.unitPrice)"></p>
+                <div class="space-y-3 flex-1 flex flex-col">
+                    <div class="space-y-3 flex-1">
+                        <input type="text" placeholder="Customer Name" x-model="saleForm.customer" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <select x-model="saleForm.type" @change="updateSalePrice()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option>Regular</option>
+                            <option>Loaned</option>
+                        </select>
+                        <input type="number" placeholder="Quantity" x-model.number="saleForm.quantity" min="1" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div class="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center flex items-center justify-center h-[90px] w-full my-3">
+                        <div>
+                            <p class="text-xs text-slate-600 dark:text-slate-400">Unit Price</p>
+                            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400" x-text="formatPHP(saleForm.unitPrice)"></p>
+                        </div>
                     </div>
                     <button @click="submitSale()" class="w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors">
                         Record Sale
@@ -81,17 +89,21 @@
             </div>
 
             <!-- RESTOCK FORM -->
-            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
                 <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
                     <span>🛒</span>
                     <span>Restock</span>
                 </h2>
-                <div class="space-y-3">
-                    <input type="number" placeholder="Quantity to Buy" x-model.number="restockForm.quantity" min="1" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="number" placeholder="Cost per Unit" x-model.number="restockForm.unitCost" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <div class="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center">
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Total Cost</p>
-                        <p class="text-xl font-bold text-blue-600 dark:text-blue-400" x-text="formatPHP(restockForm.quantity * restockForm.unitCost)"></p>
+                <div class="space-y-3 flex-1 flex flex-col">
+                    <div class="space-y-3 flex-1">
+                        <input type="number" placeholder="Quantity to Buy" x-model.number="restockForm.quantity" min="1" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number" placeholder="Cost per Unit" x-model.number="restockForm.unitCost" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center flex items-center justify-center h-[90px] w-full my-3">
+                        <div>
+                            <p class="text-xs text-slate-600 dark:text-slate-400">Total Cost</p>
+                            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400" x-text="formatPHP(restockForm.quantity * restockForm.unitCost)"></p>
+                        </div>
                     </div>
                     <button @click="submitRestock()" class="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors">
                         Restock Now
@@ -100,21 +112,23 @@
             </div>
 
             <!-- EXPENSE FORM -->
-            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
                 <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
                     <span>💳</span>
                     <span>Record Expense</span>
                 </h2>
-                <div class="space-y-3">
-                    <select x-model="expenseForm.category" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500">
-                        <option>Transportation</option>
-                        <option>Utilities</option>
-                        <option>Maintenance</option>
-                        <option>Feed Supplies</option>
-                        <option>Veterinary</option>
-                    </select>
-                    <input type="number" placeholder="Amount" x-model.number="expenseForm.amount" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
-                    <input type="text" placeholder="Notes (optional)" x-model="expenseForm.notes" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                <div class="space-y-3 flex-1 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <select x-model="expenseForm.category" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                            <option>Transportation</option>
+                            <option>Utilities</option>
+                            <option>Maintenance</option>
+                            <option>Feed Supplies</option>
+                            <option>Veterinary</option>
+                        </select>
+                        <input type="number" placeholder="Amount" x-model.number="expenseForm.amount" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <input type="text" placeholder="Notes (optional)" x-model="expenseForm.notes" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
                     <button @click="submitExpense()" class="w-full px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-lg transition-colors">
                         Record Expense
                     </button>
@@ -153,7 +167,7 @@
                         <tbody>
                             <template x-for="sale in sales" :key="sale.id">
                                 <tr class="border-b border-slate-100 dark:border-slate-700/50">
-                                    <td class="py-2 text-slate-500" x-text="sale.date"></td>
+                                    <td class="py-2 text-slate-500" x-text="sale.dateDisplay || sale.date"></td>
                                     <td class="py-2 font-medium" x-text="sale.customer"></td>
                                     <td class="py-2">
                                         <span :class="sale.type === 'Loaned' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'" class="px-1.5 py-0.5 rounded text-[10px]" x-text="sale.type"></span>
@@ -219,6 +233,144 @@
 
     </main>
 
+    <!-- RECEIPT MODAL -->
+    <div x-show="showReceiptModal" @click="showReceiptModal = false" class="fixed inset-0 bg-black/30 z-40" style="display: none;"></div>
+    
+    <div x-show="showReceiptModal" class="fixed left-0 top-0 h-screen w-96 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-y-auto" style="display: none;" x-transition>
+        <!-- Receipt Header -->
+        <div class="sticky top-0 bg-amber-500 text-white p-4 text-center border-b-4 border-amber-600">
+            <h2 class="text-2xl font-bold">🧾 YOLK</h2>
+            <p class="text-sm">Weekly Report</p>
+        </div>
+
+        <!-- Date Range Selection -->
+        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700">
+            <div class="space-y-2">
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Start Date</label>
+                    <input type="date" x-model="exportForm.startDate" class="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">End Date</label>
+                    <input type="date" x-model="exportForm.endDate" class="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500">
+                </div>
+                <button @click="generateReceipt()" class="w-full px-3 py-2 mt-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded text-sm transition-colors">
+                    Generate Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Receipt Content -->
+        <div class="p-6 space-y-4">
+            <!-- Header Info -->
+            <div class="text-center border-b-2 border-dashed border-slate-300 dark:border-slate-700 pb-3">
+                <p class="text-xs text-slate-600 dark:text-slate-400">Period:</p>
+                <p class="font-bold text-sm" x-text="exportForm.startDate + ' to ' + exportForm.endDate"></p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" x-text="'Generated: ' + new Date().toLocaleDateString()"></p>
+            </div>
+
+            <!-- Financial Summary -->
+            <div class="space-y-2">
+                <p class="font-bold text-sm uppercase text-slate-900 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2">Financial Summary</p>
+                
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-600 dark:text-slate-400">Total Sales Revenue:</span>
+                    <span class="font-bold text-emerald-600 dark:text-emerald-400" x-text="formatPHP(receiptData.totalSalesRevenue)"></span>
+                </div>
+                
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-600 dark:text-slate-400">Total Expenses:</span>
+                    <span class="font-bold text-rose-600 dark:text-rose-400" x-text="formatPHP(receiptData.totalExpenses)"></span>
+                </div>
+
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-600 dark:text-slate-400">COGS:</span>
+                    <span class="font-bold text-blue-600 dark:text-blue-400" x-text="formatPHP(receiptData.totalCOGS)"></span>
+                </div>
+
+                <div class="border-t-2 border-dashed border-slate-300 dark:border-slate-700 pt-2 mt-2">
+                    <div class="flex justify-between text-base font-bold">
+                        <span class="text-slate-900 dark:text-slate-100">Net Profit:</span>
+                        <span class="text-amber-600 dark:text-amber-400" x-text="formatPHP(receiptData.netProfit)"></span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between text-base font-bold">
+                    <span class="text-slate-900 dark:text-slate-100">Cash on Hand:</span>
+                    <span class="text-emerald-600 dark:text-emerald-400" x-text="formatPHP(receiptData.cashOnHand)"></span>
+                </div>
+
+                <div class="flex justify-between text-base font-bold bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
+                    <span class="text-slate-900 dark:text-slate-100">Accounts Receivable:</span>
+                    <span class="text-amber-600 dark:text-amber-400" x-text="formatPHP(receiptData.accountsReceivable)"></span>
+                </div>
+            </div>
+
+            <!-- Sales Breakdown -->
+            <div class="space-y-2">
+                <p class="font-bold text-sm uppercase text-slate-900 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2">Sales Breakdown</p>
+                
+                <template x-if="receiptData.weeklySales && receiptData.weeklySales.length > 0">
+                    <div class="space-y-2">
+                        <template x-for="sale in receiptData.weeklySales" :key="sale.id">
+                            <div class="text-xs bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-700">
+                                <div class="flex justify-between font-semibold">
+                                    <span x-text="sale.customer"></span>
+                                    <span x-text="formatPHP(sale.quantity * sale.unitPrice)"></span>
+                                </div>
+                                <div class="text-slate-600 dark:text-slate-400">
+                                    <span x-text="sale.quantity + 'x @ ₱' + sale.unitPrice + ' (' + sale.type + ')'"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <template x-if="!receiptData.weeklySales || receiptData.weeklySales.length === 0">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 italic">No sales for this period</p>
+                </template>
+            </div>
+
+            <!-- Expenses Breakdown -->
+            <div class="space-y-2">
+                <p class="font-bold text-sm uppercase text-slate-900 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2">Expenses Breakdown</p>
+                
+                <template x-if="receiptData.weeklyExpenses && receiptData.weeklyExpenses.length > 0">
+                    <div class="space-y-2">
+                        <template x-for="exp in receiptData.weeklyExpenses" :key="exp.id">
+                            <div class="text-xs bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-700">
+                                <div class="flex justify-between font-semibold">
+                                    <span x-text="exp.category"></span>
+                                    <span class="text-rose-600 dark:text-rose-400" x-text="formatPHP(exp.amount)"></span>
+                                </div>
+                                <div class="text-slate-600 dark:text-slate-400" x-show="exp.notes">
+                                    <span x-text="exp.notes"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <template x-if="!receiptData.weeklyExpenses || receiptData.weeklyExpenses.length === 0">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 italic">No expenses for this period</p>
+                </template>
+            </div>
+
+            <!-- Footer -->
+            <div class="border-t-2 border-dashed border-slate-300 dark:border-slate-700 pt-3 mt-4 text-center">
+                <p class="text-xs text-slate-500 dark:text-slate-400">Thank you for using YOLK</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">📸 Take a screenshot to save</p>
+            </div>
+        </div>
+
+        <!-- Close Button -->
+        <div class="sticky bottom-0 p-4 bg-slate-100 dark:bg-slate-800 border-t border-slate-300 dark:border-slate-700">
+            <button @click="showReceiptModal = false" class="w-full px-4 py-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100 font-semibold rounded transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+
     <script>
         function eggApp() {
             return {
@@ -248,8 +400,31 @@
                     amount: '',
                     notes: ''
                 },
+                
+                showExportModal: false,
+                showReceiptModal: false,
+                exportForm: {
+                    startDate: '',
+                    endDate: ''
+                },
+                receiptData: {
+                    totalSalesRevenue: 0,
+                    totalExpenses: 0,
+                    totalCOGS: 0,
+                    netProfit: 0,
+                    cashOnHand: 0,
+                    accountsReceivable: 0,
+                    weeklySales: [],
+                    weeklyExpenses: []
+                },
 
                 init() {
+                    // Set default date range (last 7 days)
+                    const today = new Date();
+                    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    this.exportForm.endDate = today.toISOString().split('T')[0];
+                    this.exportForm.startDate = lastWeek.toISOString().split('T')[0];
+                    
                     if (localStorage.getItem('egg_app_data')) {
                         const savedData = JSON.parse(localStorage.getItem('egg_app_data'));
                         this.inventory = savedData.inventory || 100;
@@ -316,7 +491,8 @@
                     }
                     this.sales.unshift({
                         id: Date.now(),
-                        date: new Date().toLocaleDateString('en-US', {
+                        date: new Date().toISOString(),
+                        dateDisplay: new Date().toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric'
                         }),
@@ -399,6 +575,159 @@
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     });
+                },
+
+                getWeeklyData() {
+                    const start = new Date(this.exportForm.startDate);
+                    const end = new Date(this.exportForm.endDate);
+                    end.setHours(23, 59, 59, 999);
+
+                    console.log('Filter range:', start, 'to', end);
+
+                    // For sales, the date is stored as ISO string (full date), so we can parse directly
+                    const weeklySales = this.sales.filter(s => {
+                        let saleDate;
+                        try {
+                            // Try parsing as ISO string first
+                            if (s.date && s.date.includes('T')) {
+                                saleDate = new Date(s.date);
+                            } else if (s.date) {
+                                // If it's a short format like "May 17", we need to construct it
+                                // Get current year as fallback
+                                const currentYear = new Date().getFullYear();
+                                const dateStr = s.date + ' ' + currentYear;
+                                saleDate = new Date(dateStr);
+                            }
+                            console.log('Sale date:', s.customer, saleDate, 'in range?', saleDate >= start && saleDate <= end);
+                            return saleDate >= start && saleDate <= end;
+                        } catch (e) {
+                            console.error('Error parsing sale date:', s.date, e);
+                            return false;
+                        }
+                    });
+
+                    const weeklyExpenses = this.expenses.filter(e => {
+                        try {
+                            const currentYear = new Date().getFullYear();
+                            const dateStr = e.date + ' ' + currentYear;
+                            const eDate = new Date(dateStr);
+                            console.log('Expense date:', e.category, eDate, 'in range?', eDate >= start && eDate <= end);
+                            return eDate >= start && eDate <= end;
+                        } catch (err) {
+                            console.error('Error parsing expense date:', e.date, err);
+                            return false;
+                        }
+                    });
+
+                    console.log('Filtered sales:', weeklySales);
+                    console.log('Filtered expenses:', weeklyExpenses);
+
+                    return { weeklySales, weeklyExpenses };
+                },
+
+                generateReceipt() {
+                    if (!this.exportForm.startDate || !this.exportForm.endDate) {
+                        alert('Please select both start and end dates');
+                        return;
+                    }
+
+                    const { weeklySales, weeklyExpenses } = this.getWeeklyData();
+                    
+                    const totalSalesRevenue = weeklySales.reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+                    const totalExpenses = weeklyExpenses.reduce((sum, e) => sum + e.amount, 0);
+                    const totalCOGS = weeklySales.reduce((sum, s) => sum + (s.quantity * this.restockForm.unitCost), 0);
+                    const netProfit = totalSalesRevenue - totalCOGS;
+                    const cashOnHand = totalSalesRevenue - totalExpenses;
+                    const accountsReceivable = weeklySales.filter(s => s.type === 'Loaned').reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+
+                    this.receiptData = {
+                        totalSalesRevenue,
+                        totalExpenses,
+                        totalCOGS,
+                        netProfit,
+                        cashOnHand,
+                        accountsReceivable,
+                        weeklySales,
+                        weeklyExpenses
+                    };
+                },
+
+                exportToExcel() {
+                    try {
+                        if (!this.exportForm.startDate || !this.exportForm.endDate) {
+                            alert('Please select both start and end dates');
+                            return;
+                        }
+
+                        console.log('Starting export...', this.exportForm);
+
+                        const { weeklySales, weeklyExpenses } = this.getWeeklyData();
+                        
+                        console.log('Weekly sales:', weeklySales);
+                        console.log('Weekly expenses:', weeklyExpenses);
+                        
+                        // Calculate totals with proper data structure
+                        const totalSalesRevenue = weeklySales.reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+                        const totalExpenses = weeklyExpenses.reduce((sum, e) => sum + e.amount, 0);
+                        const totalCOGS = weeklySales.reduce((sum, s) => sum + (s.quantity * this.restockForm.unitCost), 0);
+                        const netProfit = totalSalesRevenue - totalCOGS;
+                        const cashOnHand = totalSalesRevenue - totalExpenses;
+                        const accountsReceivable = weeklySales.filter(s => s.type === 'Loaned').reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+
+                        console.log('Totals:', { totalSalesRevenue, totalExpenses, totalCOGS, netProfit, cashOnHand, accountsReceivable });
+
+                        // Build summary data
+                        const summaryData = [
+                            ['YOLK - Weekly Report'],
+                            ['Period: ' + this.exportForm.startDate + ' to ' + this.exportForm.endDate],
+                            [],
+                            ['FINANCIAL SUMMARY'],
+                            ['Metric', 'Amount'],
+                            ['Total Sales Revenue', totalSalesRevenue],
+                            ['Total Expenses', totalExpenses],
+                            ['Cost of Goods Sold (COGS)', totalCOGS],
+                            ['Net Profit', netProfit],
+                            ['Cash on Hand', cashOnHand],
+                            ['Accounts Receivable (Loaned)', accountsReceivable],
+                            [],
+                            ['SALES BREAKDOWN'],
+                            ['Customer', 'Quantity', 'Type', 'Unit Price', 'Total Revenue'],
+                            ...weeklySales.map(s => [s.customer, s.quantity, s.type, s.unitPrice, s.quantity * s.unitPrice]),
+                            [],
+                            ['EXPENSES BREAKDOWN'],
+                            ['Date', 'Category', 'Amount', 'Notes'],
+                            ...weeklyExpenses.map(e => [e.date, e.category, e.amount, e.notes || '-'])
+                        ];
+
+                        console.log('Summary data:', summaryData);
+
+                        if (!window.XLSX) {
+                            alert('XLSX library not loaded. Please refresh the page.');
+                            return;
+                        }
+
+                        const wb = XLSX.utils.book_new();
+                        const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+                        
+                        summarySheet['!cols'] = [
+                            { wch: 25 },
+                            { wch: 15 },
+                            { wch: 15 },
+                            { wch: 15 },
+                            { wch: 15 }
+                        ];
+
+                        XLSX.utils.book_append_sheet(wb, summarySheet, 'Weekly Report');
+
+                        const fileName = `Yolk_Weekly_Report_${this.exportForm.startDate}_to_${this.exportForm.endDate}.xlsx`;
+                        XLSX.writeFile(wb, fileName);
+
+                        console.log('Export complete!');
+                        this.showExportModal = false;
+                    } catch (error) {
+                        console.error('Export error:', error);
+                        alert('Error exporting: ' + error.message);
+                    }
                 }
             }
         }
