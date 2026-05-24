@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # EggTrack Pro - Inventory & Sales Management System 🥚
 
 A lightweight, modern web application for managing egg inventory, sales, and expenses using Alpine.js and Tailwind CSS.
@@ -116,3 +117,7 @@ MIT License - Feel free to use for personal or commercial purposes
 ---
 
 **Made with ❤️ for egg business management**
+=======
+# egg-inventory-system
+EggTrack Pro - Inventory &amp; Sales Management System for egg business tracking
+>>>>>>> 441e5d15d1c8bbd5f31eb71e2c965d59df1bab04
