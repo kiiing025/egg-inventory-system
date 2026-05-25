@@ -200,6 +200,46 @@ test('app shell separates dashboard, ledgers, and adjustments into pages', () =>
     assert.match(html, /x-show="currentPage === 'adjustments'"/);
 });
 
+test('mobile navigation uses a fixed bottom tab bar with icons', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const app = loadEggApp();
+
+    assert.equal(typeof app.mobileBottomNavItemClass, 'function');
+    assert.equal(typeof app.mobileBottomNavIconClass, 'function');
+    assert.match(html, /aria-label="Mobile bottom navigation"/);
+    assert.match(html, /fixed inset-x-0 bottom-0/);
+    assert.match(html, /pb-\[calc\(env\(safe-area-inset-bottom\)\+0\.75rem\)\]/);
+    assert.match(html, /data-lucide="layout-dashboard"/);
+    assert.match(html, /data-lucide="shopping-bag"/);
+    assert.match(html, /data-lucide="receipt-text"/);
+    assert.match(html, /data-lucide="sliders-horizontal"/);
+    assert.match(html, /data-lucide="cloud"/);
+    assert.match(html, /<main class="[^"]*pb-28/);
+    assert.doesNotMatch(html, /lg:hidden grid grid-cols-2 sm:grid-cols-5/);
+});
+
+test('weekly report opens as a modern modal sheet', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const app = loadEggApp();
+
+    assert.equal(typeof app.openReceiptModal, 'function');
+    app.openReceiptModal();
+    assert.equal(app.showReceiptModal, true);
+    assert.match(html, /@click="openReceiptModal\(\)"/);
+    assert.match(html, /role="dialog"/);
+    assert.match(html, /aria-modal="true"/);
+    assert.match(html, /items-end sm:items-center/);
+    assert.match(html, /rounded-t-3xl sm:rounded-3xl/);
+    assert.match(html, /x-transition:enter="[^"]*duration-300/);
+    assert.match(html, /Weekly Performance/);
+    assert.match(html, /Revenue/);
+    assert.match(html, /Net Profit/);
+    assert.match(html, /Sales Activity/);
+    assert.match(html, /Expense Activity/);
+    assert.doesNotMatch(html, /fixed left-0 top-0 h-screen w-96/);
+    assert.doesNotMatch(html, /border-dashed/);
+});
+
 test('app shell defaults to light mode and keeps dark mode opt-in', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
     const app = loadEggApp(createStorage());
@@ -210,6 +250,30 @@ test('app shell defaults to light mode and keeps dark mode opt-in', () => {
     assert.match(html, /<body class="bg-slate-50 text-slate-900[^"]*dark:bg-slate-950/);
     assert.doesNotMatch(html, /<body class="bg-slate-950 text-slate-100/);
     assert.match(html, /<aside class="[^"]*bg-white[^"]*dark:bg-slate-950/);
+});
+
+test('app shows a jumping HEAD loading screen on startup', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const app = loadEggApp(createStorage());
+
+    assert.equal(app.isLoading, true);
+    assert.equal(app.isLoadingExit, false);
+    assert.match(html, /id="app-loading-screen"/);
+    assert.match(html, /src="HEAD\.png"/);
+    assert.match(html, /class="[^"]*loading-logo-bounce/);
+    assert.match(html, /@keyframes yolkJump/);
+    assert.match(html, /@keyframes yolkSwallow/);
+    assert.match(html, /@keyframes yolkCenterSwallow/);
+    assert.match(html, /animation:\s*yolkJump[^;]+5 forwards;/);
+    assert.match(html, /class="[^"]*loading-logo-stage/);
+    assert.match(html, /class="[^"]*loading-red-swallow/);
+    assert.match(html, /loading-red-swallow-active/);
+    assert.match(html, /top:\s*50%;/);
+    assert.match(html, /left:\s*50%;/);
+    assert.match(html, /translate\(-50%, -50%\) scale\(0\)/);
+    assert.match(html, /loading-logo-swallow/);
+    assert.match(html, /isLoadingExit = true/);
+    assert.match(html, /finishLoadingScreen\(\)/);
 });
 
 test('app includes install files and registers the service worker', () => {
@@ -226,6 +290,8 @@ test('app includes install files and registers the service worker', () => {
     assert.match(html, /navigator\.serviceWorker\.register\('service-worker\.js'\)/);
     assert.match(serviceWorker, /egg-inventory-cache-v/);
     assert.match(serviceWorker, /sync-config\.js/);
+    assert.match(serviceWorker, /event\.request\.mode === 'navigate'/);
+    assert.match(serviceWorker, /fetch\(event\.request\)\.then\(response =>/);
 });
 
 test('app exposes a sync page wired to Supabase configuration', () => {
