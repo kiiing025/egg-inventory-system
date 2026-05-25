@@ -191,10 +191,12 @@ test('app shell separates dashboard, ledgers, and adjustments into pages', () =>
 
     assert.equal(app.currentPage, 'dashboard');
     assert.match(html, /@click="currentPage = 'dashboard'"/);
+    assert.match(html, /@click="currentPage = 'customers'"/);
     assert.match(html, /@click="currentPage = 'sales'"/);
     assert.match(html, /@click="currentPage = 'expenses'"/);
     assert.match(html, /@click="currentPage = 'adjustments'"/);
     assert.match(html, /x-show="currentPage === 'dashboard'"/);
+    assert.match(html, /x-show="currentPage === 'customers'"/);
     assert.match(html, /x-show="currentPage === 'sales'"/);
     assert.match(html, /x-show="currentPage === 'expenses'"/);
     assert.match(html, /x-show="currentPage === 'adjustments'"/);
@@ -210,12 +212,66 @@ test('mobile navigation uses a fixed bottom tab bar with icons', () => {
     assert.match(html, /fixed inset-x-0 bottom-0/);
     assert.match(html, /pb-\[calc\(env\(safe-area-inset-bottom\)\+0\.75rem\)\]/);
     assert.match(html, /data-lucide="layout-dashboard"/);
+    assert.match(html, /data-lucide="users"/);
     assert.match(html, /data-lucide="shopping-bag"/);
     assert.match(html, /data-lucide="receipt-text"/);
     assert.match(html, /data-lucide="sliders-horizontal"/);
     assert.match(html, /data-lucide="cloud"/);
     assert.match(html, /<main class="[^"]*pb-28/);
     assert.doesNotMatch(html, /lg:hidden grid grid-cols-2 sm:grid-cols-5/);
+});
+
+test('customer summaries group sales and calculate unpaid loan balances', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 1, customer: 'Ana', quantity: 2, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-01', paidDate: '2026-05-01' },
+        { id: 2, customer: ' Ana ', quantity: 1, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-05-03', paidDate: '' },
+        { id: 3, customer: 'Ben', quantity: 3, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-05-02', paidDate: '' },
+        { id: 4, customer: 'Ben', quantity: 1, unitPrice: 270, type: 'Loaned', paid: true, orderDate: '2026-05-01', paidDate: '2026-05-04' }
+    ];
+
+    const summaries = app.getCustomerSummaries();
+    const ana = summaries.find(customer => customer.key === 'ana');
+    const ben = summaries.find(customer => customer.key === 'ben');
+
+    assert.equal(summaries.length, 2);
+    assert.equal(ana.name, 'Ana');
+    assert.equal(ana.orderCount, 2);
+    assert.equal(ana.totalQuantity, 3);
+    assert.equal(ana.totalValue, 770);
+    assert.equal(ana.unpaidAmount, 270);
+    assert.equal(ana.unpaidCount, 1);
+    assert.equal(ana.lastOrderDateDisplay, 'May 3');
+    assert.equal(ben.unpaidAmount, 810);
+    assert.equal(ben.lastPaidDateDisplay, 'May 4');
+});
+
+test('customer search selects customers and collects one loan from customer page', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 10, customer: 'Ana', quantity: 1, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-05-03', paidDate: '' },
+        { id: 11, customer: 'Ben', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-02', paidDate: '2026-05-02' }
+    ];
+
+    app.customerSearch = 'ana';
+    assert.equal(app.getFilteredCustomerSummaries().length, 1);
+    app.selectCustomer('ana');
+
+    assert.equal(app.getSelectedCustomerSummary().name, 'Ana');
+    assert.equal(app.getSelectedCustomerSummary().unpaidAmount, 270);
+
+    assert.equal(app.collectCustomerLoan(10), true);
+    assert.equal(app.sales[0].paid, true);
+    assert.match(app.sales[0].paidDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(app.getSelectedCustomerSummary().unpaidAmount, 0);
+});
+
+test('dashboard includes a customer loan reminder shortcut', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Loan Follow-up/);
+    assert.match(html, /getCustomersWithOpenLoans\(\)\.length/);
+    assert.match(html, /@click="currentPage = 'customers'"/);
 });
 
 test('weekly report opens as a modern modal sheet', () => {
