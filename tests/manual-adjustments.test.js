@@ -274,6 +274,70 @@ test('dashboard includes a customer loan reminder shortcut', () => {
     assert.match(html, /@click="currentPage = 'customers'"/);
 });
 
+test('daily closing page and dashboard shortcut are rendered', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /@click="currentPage = 'closing'"/);
+    assert.match(html, /x-show="currentPage === 'closing'"/);
+    assert.match(html, /Daily Closing/);
+    assert.match(html, /Save Closing/);
+    assert.match(html, /Closing History/);
+});
+
+test('daily closing summary calculates selected day totals', () => {
+    const app = loadEggApp();
+    app.inventory = 42;
+    app.sales = [
+        { id: 1, customer: 'Ana', quantity: 2, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-25', paidDate: '2026-05-25' },
+        { id: 2, customer: 'Ben', quantity: 1, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-05-25', paidDate: '' },
+        { id: 3, customer: 'Cora', quantity: 3, unitPrice: 270, type: 'Loaned', paid: true, orderDate: '2026-05-20', paidDate: '2026-05-25' }
+    ];
+    app.expenses = [
+        { id: 4, date: 'May 25', category: 'Transportation', amount: 150 },
+        { id: 5, date: 'May 24', category: 'Feed Supplies', amount: 200 }
+    ];
+
+    const summary = app.getDailyClosingSummary('2026-05-25');
+
+    assert.equal(summary.date, '2026-05-25');
+    assert.equal(summary.dateDisplay, 'May 25');
+    assert.equal(summary.orderCount, 2);
+    assert.equal(summary.eggsSold, 3);
+    assert.equal(summary.salesRevenue, 770);
+    assert.equal(summary.collectedRevenue, 1310);
+    assert.equal(summary.expenseTotal, 150);
+    assert.equal(summary.netCashChange, 1160);
+    assert.equal(summary.outstandingLoans, 270);
+    assert.equal(summary.cashOnHand, 960);
+    assert.equal(summary.stockOnHand, 42);
+});
+
+test('saving daily closing creates and updates one snapshot per date', () => {
+    const app = loadEggApp();
+    app.inventory = 50;
+    app.sales = [
+        { id: 1, customer: 'Ana', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-25', paidDate: '2026-05-25' }
+    ];
+    app.expenses = [];
+    app.dailyClosingForm.date = '2026-05-25';
+    app.dailyClosingForm.notes = 'Checked drawer';
+
+    assert.equal(app.saveDailyClosing(), true);
+    assert.equal(app.dailyClosings.length, 1);
+    assert.equal(app.dailyClosings[0].date, '2026-05-25');
+    assert.equal(app.dailyClosings[0].notes, 'Checked drawer');
+    assert.equal(app.dailyClosings[0].salesRevenue, 250);
+    assert.equal(app.dailyClosings[0].stockOnHand, 50);
+
+    app.inventory = 45;
+    app.dailyClosingForm.notes = 'Updated after recount';
+
+    assert.equal(app.saveDailyClosing(), true);
+    assert.equal(app.dailyClosings.length, 1);
+    assert.equal(app.dailyClosings[0].notes, 'Updated after recount');
+    assert.equal(app.dailyClosings[0].stockOnHand, 45);
+});
+
 test('weekly report opens as a modern modal sheet', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
     const app = loadEggApp();
@@ -373,6 +437,7 @@ test('persistable sync state contains all business data', () => {
     app.expenses = [{ id: 2, category: 'Tithing', amount: 150 }];
     app.cashAdjustments = [{ id: 3, difference: 200 }];
     app.stockAdjustments = [{ id: 4, difference: -30 }];
+    app.dailyClosings = [{ id: 5, date: '2026-05-25', cashOnHand: 200 }];
 
     const data = app.getPersistableState();
 
@@ -381,5 +446,6 @@ test('persistable sync state contains all business data', () => {
     assert.deepEqual(data.expenses, app.expenses);
     assert.deepEqual(data.cashAdjustments, app.cashAdjustments);
     assert.deepEqual(data.stockAdjustments, app.stockAdjustments);
+    assert.deepEqual(data.dailyClosings, app.dailyClosings);
     assert.deepEqual(data.config, app.config);
 });
