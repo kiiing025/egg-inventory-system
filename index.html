@@ -893,6 +893,58 @@
                         <p x-show="pinMessage" x-text="pinMessage" class="mt-3 text-xs font-semibold" :class="pinMessage.includes('Incorrect') || pinMessage.includes('match') || pinMessage.includes('4 to 6') ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'"></p>
                     </div>
 
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/40 p-4">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <h3 class="text-sm font-black">Backup Center</h3>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Download or restore a full JSON copy of your YOLK records.</p>
+                            </div>
+                            <button @click="downloadBackup()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-[#d34036] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#b8322b]">
+                                <i data-lucide="download" class="h-4 w-4"></i>
+                                Download Backup
+                            </button>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            <div class="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                                <p class="font-bold uppercase tracking-wider text-slate-500">Sales</p>
+                                <p class="mt-1 text-lg font-black" x-text="getBackupSummary().sales"></p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                                <p class="font-bold uppercase tracking-wider text-slate-500">Expenses</p>
+                                <p class="mt-1 text-lg font-black" x-text="getBackupSummary().expenses"></p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                                <p class="font-bold uppercase tracking-wider text-slate-500">Customers</p>
+                                <p class="mt-1 text-lg font-black" x-text="getBackupSummary().customers"></p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                                <p class="font-bold uppercase tracking-wider text-slate-500">Stock</p>
+                                <p class="mt-1 text-lg font-black" x-text="getBackupSummary().inventory"></p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 space-y-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-slate-500" for="backup-restore-text">Restore from backup JSON</label>
+                            <textarea id="backup-restore-text" x-model="backupForm.restoreText" rows="5" placeholder="Paste YOLK backup JSON here" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]"></textarea>
+                            <div class="grid sm:grid-cols-2 gap-2">
+                                <button @click="previewBackupRestore()" class="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/15">Preview Backup</button>
+                                <button @click="restoreBackupFromText()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700">Restore Backup</button>
+                            </div>
+                        </div>
+
+                        <div x-show="backupPreview" class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100">
+                            <p class="font-black">Backup preview</p>
+                            <p class="mt-1">
+                                <span x-text="backupPreview?.sales || 0"></span> sales,
+                                <span x-text="backupPreview?.expenses || 0"></span> expenses,
+                                <span x-text="backupPreview?.customers || 0"></span> customers,
+                                <span x-text="backupPreview?.inventory || 0"></span> eggs.
+                            </p>
+                        </div>
+                        <p x-show="backupMessage" x-text="backupMessage" class="mt-3 text-xs font-semibold" :class="backupMessage.includes('Invalid') || backupMessage.includes('does not contain') ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'"></p>
+                    </div>
+
                     <div class="grid sm:grid-cols-2 gap-3">
                         <input type="email" x-model="syncForm.email" placeholder="Supabase email" autocomplete="email" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
                         <input type="password" x-model="syncForm.password" placeholder="Password" autocomplete="current-password" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -1189,6 +1241,12 @@
                     newPin: '',
                     confirmPin: ''
                 },
+                backupForm: {
+                    restoreText: ''
+                },
+                backupMessage: '',
+                backupPreview: null,
+                backupLastPayload: null,
                 dailyClosingForm: {
                     date: '',
                     notes: ''
@@ -1284,6 +1342,158 @@
                         this.markLocalSyncChange();
                         this.queueSyncPush();
                     }
+                },
+
+                getBackupSummary(data = this.getPersistableState()) {
+                    const sales = Array.isArray(data.sales) ? data.sales : [];
+                    const expenses = Array.isArray(data.expenses) ? data.expenses : [];
+                    const cashAdjustments = Array.isArray(data.cashAdjustments) ? data.cashAdjustments : [];
+                    const stockAdjustments = Array.isArray(data.stockAdjustments) ? data.stockAdjustments : [];
+                    const dailyClosings = Array.isArray(data.dailyClosings) ? data.dailyClosings : [];
+                    const customers = new Set(
+                        sales
+                            .map(sale => this.getCustomerKey(sale.customer))
+                            .filter(Boolean)
+                    );
+                    const collectedRevenue = sales
+                        .filter(sale => sale.paid)
+                        .reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
+                    const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+                    const cashAdjustmentTotal = cashAdjustments.reduce((sum, adjustment) => sum + Number(adjustment.difference || 0), 0);
+                    const outstandingLoans = sales
+                        .filter(sale => sale.type === 'Loaned' && !sale.paid)
+                        .reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
+
+                    return {
+                        sales: sales.length,
+                        expenses: expenses.length,
+                        cashAdjustments: cashAdjustments.length,
+                        stockAdjustments: stockAdjustments.length,
+                        dailyClosings: dailyClosings.length,
+                        customers: customers.size,
+                        inventory: Number(data.inventory ?? 0),
+                        cashOnHand: collectedRevenue - expenseTotal + cashAdjustmentTotal,
+                        outstandingLoans
+                    };
+                },
+
+                createBackupPayload() {
+                    const data = this.getPersistableState();
+                    const payload = {
+                        app: 'YOLK Inventory',
+                        version: 1,
+                        exportedAt: new Date().toISOString(),
+                        summary: this.getBackupSummary(data),
+                        data
+                    };
+                    this.backupLastPayload = payload;
+                    return payload;
+                },
+
+                createBackupJson(payload = null) {
+                    const backupPayload = payload || this.backupLastPayload || this.createBackupPayload();
+                    return JSON.stringify(backupPayload, null, 2);
+                },
+
+                getBackupFileName() {
+                    return `YOLK_Backup_${this.formatDateForInput()}.json`;
+                },
+
+                hasBackupBusinessData(data) {
+                    if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+                    return ['inventory', 'sales', 'expenses', 'cashAdjustments', 'stockAdjustments', 'dailyClosings', 'config']
+                        .some(key => Object.prototype.hasOwnProperty.call(data, key));
+                },
+
+                normalizeBackupData(data) {
+                    return {
+                        inventory: Number.isFinite(Number(data.inventory)) ? Number(data.inventory) : 100,
+                        sales: Array.isArray(data.sales) ? data.sales : [],
+                        expenses: Array.isArray(data.expenses) ? data.expenses : [],
+                        cashAdjustments: Array.isArray(data.cashAdjustments) ? data.cashAdjustments : [],
+                        stockAdjustments: Array.isArray(data.stockAdjustments) ? data.stockAdjustments : [],
+                        dailyClosings: Array.isArray(data.dailyClosings) ? data.dailyClosings : [],
+                        config: data.config && typeof data.config === 'object' ? {
+                            ...this.config,
+                            ...data.config
+                        } : this.config
+                    };
+                },
+
+                parseBackupText(text = this.backupForm.restoreText) {
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(String(text || '').trim());
+                    } catch (error) {
+                        this.backupMessage = 'Invalid backup JSON. Please paste a YOLK backup file.';
+                        return { ok: false, message: this.backupMessage };
+                    }
+
+                    const data = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
+                    if (!this.hasBackupBusinessData(data)) {
+                        this.backupMessage = 'This backup does not contain YOLK records.';
+                        return { ok: false, message: this.backupMessage };
+                    }
+
+                    const normalizedData = this.normalizeBackupData(data);
+                    return {
+                        ok: true,
+                        data: normalizedData,
+                        summary: this.getBackupSummary(normalizedData),
+                        exportedAt: parsed.exportedAt || ''
+                    };
+                },
+
+                previewBackupRestore() {
+                    const parsed = this.parseBackupText();
+                    if (!parsed.ok) {
+                        this.backupPreview = null;
+                        return false;
+                    }
+                    this.backupPreview = parsed.summary;
+                    this.backupMessage = 'Backup preview is ready. Review the counts before restoring.';
+                    return true;
+                },
+
+                restoreBackupFromText() {
+                    const parsed = this.parseBackupText();
+                    if (!parsed.ok) {
+                        this.backupPreview = null;
+                        return false;
+                    }
+                    if (typeof confirm === 'function' && !confirm('Restore this backup and replace current records on this device?')) {
+                        this.backupMessage = 'Backup restore cancelled.';
+                        return false;
+                    }
+
+                    this.applyPersistedState(parsed.data);
+                    this.persistState();
+                    this.backupPreview = parsed.summary;
+                    this.backupMessage = 'Backup restored. These records are saved on this device.';
+                    this.backupForm.restoreText = '';
+                    return true;
+                },
+
+                downloadBackup() {
+                    const payload = this.createBackupPayload();
+                    const json = this.createBackupJson(payload);
+                    this.backupPreview = payload.summary;
+                    this.backupMessage = 'Backup prepared for download.';
+
+                    if (typeof window === 'undefined' || typeof document === 'undefined' || typeof Blob === 'undefined') {
+                        return json;
+                    }
+
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = this.getBackupFileName();
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    return json;
                 },
 
                 getPinLockStorageKey() {

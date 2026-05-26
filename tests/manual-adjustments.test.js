@@ -640,6 +640,126 @@ test('pin lock UI is present for startup and cloud sync management', () => {
     assert.match(html, /@click="disablePinLock\(\)"/);
 });
 
+test('backup export contains business data, summary, and no local secrets', () => {
+    const app = loadEggApp();
+    app.inventory = 42;
+    app.sales = [
+        { id: 1, customer: 'Ana', quantity: 2, unitPrice: 250, paid: true },
+        { id: 2, customer: 'Ben', quantity: 1, unitPrice: 270, type: 'Loaned', paid: false }
+    ];
+    app.expenses = [{ id: 3, category: 'Tithing', amount: 150 }];
+    app.cashAdjustments = [{ id: 4, difference: 200 }];
+    app.stockAdjustments = [{ id: 5, difference: -30 }];
+    app.dailyClosings = [{ id: 6, date: '2026-05-26', cashOnHand: 550 }];
+    app.pinLockHash = 'pin-v1:secret';
+    app.syncLastCloudSaveAt = '5/26/2026, 9:30:00 AM';
+
+    const summary = app.getBackupSummary();
+    assert.equal(summary.sales, 2);
+    assert.equal(summary.expenses, 1);
+    assert.equal(summary.cashAdjustments, 1);
+    assert.equal(summary.stockAdjustments, 1);
+    assert.equal(summary.dailyClosings, 1);
+    assert.equal(summary.customers, 2);
+    assert.equal(summary.inventory, 42);
+    assert.equal(summary.cashOnHand, 550);
+    assert.equal(summary.outstandingLoans, 270);
+
+    const payload = app.createBackupPayload();
+    assert.equal(payload.app, 'YOLK Inventory');
+    assert.equal(payload.version, 1);
+    assert.deepEqual(payload.summary, summary);
+    assert.deepEqual(payload.data, app.getPersistableState());
+    assert.match(payload.exportedAt, /^\d{4}-\d{2}-\d{2}T/);
+    assert.match(app.getBackupFileName(), /^YOLK_Backup_\d{4}-\d{2}-\d{2}\.json$/);
+
+    const json = app.createBackupJson();
+    assert.equal(json, JSON.stringify(payload, null, 2));
+    assert.doesNotMatch(json, /pinLockHash/);
+    assert.doesNotMatch(json, /pin-v1:secret/);
+    assert.doesNotMatch(json, /syncLastCloudSaveAt/);
+    assert.doesNotMatch(json, /supabaseAnonKey/);
+});
+
+test('backup restore previews and imports full backup payloads', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 5;
+    app.sales = [];
+    app.getSyncConfig = () => ({ tableName: 'egg_app_state', supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' });
+    app.syncUser = { id: 'user-1' };
+
+    const backup = {
+        app: 'YOLK Inventory',
+        version: 1,
+        exportedAt: '2026-05-26T12:00:00.000Z',
+        data: {
+            inventory: 77,
+            sales: [{ id: 1, customer: 'Restore Customer', quantity: 3, unitPrice: 250, paid: true }],
+            expenses: [{ id: 2, category: 'Feed', amount: 120 }],
+            cashAdjustments: [],
+            stockAdjustments: [],
+            dailyClosings: [],
+            config: { regularPrice: 250, loanPrice: 270 }
+        }
+    };
+
+    app.backupForm.restoreText = JSON.stringify(backup);
+    assert.equal(app.previewBackupRestore(), true);
+    assert.equal(app.backupPreview.sales, 1);
+    assert.equal(app.backupPreview.expenses, 1);
+    assert.equal(app.backupPreview.inventory, 77);
+
+    assert.equal(app.restoreBackupFromText(), true);
+    assert.equal(app.inventory, 77);
+    assert.equal(app.sales[0].customer, 'Restore Customer');
+    assert.equal(app.expenses[0].category, 'Feed');
+    assert.equal(app.syncPendingChanges, true);
+    assert.match(app.backupMessage, /Backup restored/);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.inventory, 77);
+    assert.equal(savedData.sales.length, 1);
+});
+
+test('backup restore rejects invalid text and supports raw business payloads', () => {
+    const app = loadEggApp();
+    app.inventory = 12;
+
+    app.backupForm.restoreText = '{bad json';
+    assert.equal(app.previewBackupRestore(), false);
+    assert.equal(app.inventory, 12);
+    assert.match(app.backupMessage, /Invalid backup JSON/);
+
+    app.backupForm.restoreText = JSON.stringify({ app: 'Wrong App', version: 1 });
+    assert.equal(app.restoreBackupFromText(), false);
+    assert.equal(app.inventory, 12);
+    assert.match(app.backupMessage, /does not contain YOLK records/);
+
+    app.backupForm.restoreText = JSON.stringify({
+        inventory: 88,
+        sales: [],
+        expenses: [],
+        cashAdjustments: [],
+        stockAdjustments: [],
+        dailyClosings: [],
+        config: { regularPrice: 250, loanPrice: 270 }
+    });
+    assert.equal(app.restoreBackupFromText(), true);
+    assert.equal(app.inventory, 88);
+});
+
+test('backup center UI is present on the cloud sync page', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Backup Center/);
+    assert.match(html, /Download Backup/);
+    assert.match(html, /x-model="backupForm\.restoreText"/);
+    assert.match(html, /@click="downloadBackup\(\)"/);
+    assert.match(html, /@click="previewBackupRestore\(\)"/);
+    assert.match(html, /@click="restoreBackupFromText\(\)"/);
+});
+
 test('persistable sync state contains all business data', () => {
     const app = loadEggApp();
     app.inventory = 42;
