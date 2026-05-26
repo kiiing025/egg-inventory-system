@@ -545,6 +545,101 @@ test('sync health is visible on dashboard and cloud sync page', () => {
     assert.match(html, /Last error/);
 });
 
+test('pin lock can be configured and unlocks with the correct pin', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+
+    assert.equal(app.getPinLockStorageKey(), 'egg_pin_lock');
+    assert.equal(app.pinLockEnabled, false);
+    assert.equal(app.pinUnlocked, true);
+    assert.equal(app.isValidPin('1234'), true);
+    assert.equal(app.isValidPin('123456'), true);
+    assert.equal(app.isValidPin('123'), false);
+    assert.equal(app.isValidPin('1234567'), false);
+    assert.equal(app.isValidPin('12ab'), false);
+
+    app.pinForm.newPin = '1234';
+    app.pinForm.confirmPin = '1234';
+
+    assert.equal(app.setPinLock(), true);
+    assert.equal(app.pinLockEnabled, true);
+    assert.equal(app.pinUnlocked, true);
+    assert.notEqual(app.pinLockHash, '1234');
+    assert.equal(app.verifyPin('1234'), true);
+
+    const savedSettings = JSON.parse(storage.getItem('egg_pin_lock'));
+    assert.equal(savedSettings.enabled, true);
+    assert.equal(savedSettings.pinHash, app.pinLockHash);
+
+    assert.equal(app.lockApp(), true);
+    assert.equal(app.pinUnlocked, false);
+
+    app.pinForm.unlockPin = '0000';
+    assert.equal(app.unlockApp(), false);
+    assert.equal(app.pinUnlocked, false);
+    assert.match(app.pinMessage, /Incorrect PIN/);
+
+    app.pinForm.unlockPin = '1234';
+    assert.equal(app.unlockApp(), true);
+    assert.equal(app.pinUnlocked, true);
+    assert.equal(app.pinForm.unlockPin, '');
+});
+
+test('pin lock can be changed, disabled, and stays out of synced business data', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+
+    app.pinForm.newPin = '1234';
+    app.pinForm.confirmPin = '1234';
+    assert.equal(app.setPinLock(), true);
+
+    const reloadedApp = loadEggApp(storage);
+    reloadedApp.init();
+    assert.equal(reloadedApp.pinLockEnabled, true);
+    assert.equal(reloadedApp.pinUnlocked, false);
+    assert.equal(reloadedApp.verifyPin('1234'), true);
+
+    reloadedApp.pinForm.currentPin = '0000';
+    reloadedApp.pinForm.newPin = '9876';
+    reloadedApp.pinForm.confirmPin = '9876';
+    assert.equal(reloadedApp.changePinLock(), false);
+    assert.equal(reloadedApp.verifyPin('1234'), true);
+
+    reloadedApp.pinForm.currentPin = '1234';
+    reloadedApp.pinForm.newPin = '9876';
+    reloadedApp.pinForm.confirmPin = '9876';
+    assert.equal(reloadedApp.changePinLock(), true);
+    assert.equal(reloadedApp.verifyPin('9876'), true);
+    assert.equal(reloadedApp.verifyPin('1234'), false);
+
+    reloadedApp.pinForm.currentPin = '1234';
+    assert.equal(reloadedApp.disablePinLock(), false);
+    assert.equal(reloadedApp.pinLockEnabled, true);
+
+    reloadedApp.pinForm.currentPin = '9876';
+    assert.equal(reloadedApp.disablePinLock(), true);
+    assert.equal(reloadedApp.pinLockEnabled, false);
+    assert.equal(reloadedApp.pinUnlocked, true);
+    assert.equal(storage.getItem('egg_pin_lock'), null);
+
+    const data = app.getPersistableState();
+    assert.equal(Object.prototype.hasOwnProperty.call(data, 'pinLockHash'), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(data, 'pinLockEnabled'), false);
+});
+
+test('pin lock UI is present for startup and cloud sync management', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /App Lock/);
+    assert.match(html, /x-show="shouldShowPinLock\(\)"/);
+    assert.match(html, /x-model="pinForm\.unlockPin"/);
+    assert.match(html, /@click="unlockApp\(\)"/);
+    assert.match(html, /@click="lockApp\(\)"/);
+    assert.match(html, /@click="setPinLock\(\)"/);
+    assert.match(html, /@click="changePinLock\(\)"/);
+    assert.match(html, /@click="disablePinLock\(\)"/);
+});
+
 test('persistable sync state contains all business data', () => {
     const app = loadEggApp();
     app.inventory = 42;
