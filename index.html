@@ -258,6 +258,20 @@
             </button>
         </div>
 
+        <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <div class="flex items-center gap-2">
+                    <p class="text-sm font-black">Sync Health</p>
+                    <span class="rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider" :class="syncHealthClass()" x-text="syncHealthLabel()"></span>
+                </div>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400" x-text="syncHealthDetail()"></p>
+            </div>
+            <button @click="currentPage = 'sync'" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
+                <i data-lucide="cloud" class="h-4 w-4"></i>
+                Open Sync
+            </button>
+        </div>
+
         <div class="grid md:grid-cols-3 gap-6">
 
             <!-- SALES FORM -->
@@ -782,6 +796,46 @@
                         </div>
                     </template>
 
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/40 p-4">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 class="text-sm font-black">Sync Health</h3>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400" x-text="syncHealthDetail()"></p>
+                            </div>
+                            <span class="self-start rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider" :class="syncHealthClass()" x-text="syncHealthLabel()"></span>
+                        </div>
+                        <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                            <div class="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Connection</p>
+                                <p class="mt-1 font-bold" x-text="syncOnline ? 'Online' : 'Offline'"></p>
+                            </div>
+                            <div class="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Account</p>
+                                <p class="mt-1 font-bold" x-text="syncUser ? 'Signed in' : 'Signed out'"></p>
+                            </div>
+                            <div class="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Unsynced changes</p>
+                                <p class="mt-1 font-bold" x-text="syncPendingChanges ? 'Waiting to save' : 'None'"></p>
+                            </div>
+                            <div class="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Last local change</p>
+                                <p class="mt-1 font-bold" x-text="syncLastLocalChangeAt || 'No local changes yet'"></p>
+                            </div>
+                            <div class="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Last cloud save</p>
+                                <p class="mt-1 font-bold" x-text="syncLastCloudSaveAt || 'Not saved yet'"></p>
+                            </div>
+                            <div class="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Last cloud load</p>
+                                <p class="mt-1 font-bold" x-text="syncLastCloudLoadAt || 'Not loaded yet'"></p>
+                            </div>
+                            <div class="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 sm:col-span-2 lg:col-span-3">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Last error</p>
+                                <p class="mt-1 font-bold" :class="syncLastError ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-200'" x-text="syncLastError || 'No sync errors'"></p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid sm:grid-cols-2 gap-3">
                         <input type="email" x-model="syncForm.email" placeholder="Supabase email" autocomplete="email" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
                         <input type="password" x-model="syncForm.password" placeholder="Password" autocomplete="current-password" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -1032,6 +1086,13 @@
                 syncBusy: false,
                 syncLastSyncedAt: '',
                 syncAutoPushTimer: null,
+                syncOnline: true,
+                syncPendingChanges: false,
+                syncLastLocalChangeAt: '',
+                syncLastCloudSaveAt: '',
+                syncLastCloudLoadAt: '',
+                syncLastError: '',
+                syncAutoSaveQueuedAt: '',
 
                 saleForm: {
                     customer: '',
@@ -1089,6 +1150,9 @@
                     this.exportForm.startDate = lastWeek.toISOString().split('T')[0];
                     this.saleForm.orderDate = this.formatDateForInput(today);
                     this.dailyClosingForm.date = this.formatDateForInput(today);
+                    this.syncOnline = this.getBrowserOnlineStatus();
+                    this.loadSyncMeta();
+                    this.setupSyncNetworkListeners();
 
                     if (localStorage.getItem('egg_app_data')) {
                         const savedData = JSON.parse(localStorage.getItem('egg_app_data'));
@@ -1146,7 +1210,78 @@
 
                 persistState(options = {}) {
                     localStorage.setItem('egg_app_data', JSON.stringify(this.getPersistableState()));
-                    if (options.sync !== false) this.queueSyncPush();
+                    if (options.sync !== false) {
+                        this.markLocalSyncChange();
+                        this.queueSyncPush();
+                    }
+                },
+
+                getSyncMetaStorageKey() {
+                    return 'egg_sync_meta';
+                },
+
+                getBrowserOnlineStatus() {
+                    if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
+                        return navigator.onLine;
+                    }
+                    return true;
+                },
+
+                loadSyncMeta() {
+                    const rawMeta = localStorage.getItem(this.getSyncMetaStorageKey());
+                    if (!rawMeta) return false;
+                    try {
+                        const meta = JSON.parse(rawMeta);
+                        this.syncPendingChanges = Boolean(meta.syncPendingChanges);
+                        this.syncLastLocalChangeAt = meta.syncLastLocalChangeAt || '';
+                        this.syncLastCloudSaveAt = meta.syncLastCloudSaveAt || '';
+                        this.syncLastCloudLoadAt = meta.syncLastCloudLoadAt || '';
+                        this.syncLastError = meta.syncLastError || '';
+                        this.syncAutoSaveQueuedAt = meta.syncAutoSaveQueuedAt || '';
+                        return true;
+                    } catch (error) {
+                        return false;
+                    }
+                },
+
+                saveSyncMeta() {
+                    localStorage.setItem(this.getSyncMetaStorageKey(), JSON.stringify({
+                        syncPendingChanges: this.syncPendingChanges,
+                        syncLastLocalChangeAt: this.syncLastLocalChangeAt,
+                        syncLastCloudSaveAt: this.syncLastCloudSaveAt,
+                        syncLastCloudLoadAt: this.syncLastCloudLoadAt,
+                        syncLastError: this.syncLastError,
+                        syncAutoSaveQueuedAt: this.syncAutoSaveQueuedAt
+                    }));
+                    return true;
+                },
+
+                markLocalSyncChange() {
+                    this.syncLastLocalChangeAt = new Date().toLocaleString();
+                    this.syncPendingChanges = true;
+                    if (!this.syncOnline) {
+                        this.syncStatus = 'offline';
+                        this.syncMessage = 'Offline. Changes are saved on this device and waiting for cloud sync.';
+                    } else if (this.syncUser) {
+                        this.syncStatus = 'unsynced';
+                        this.syncMessage = 'Unsynced changes waiting for cloud save.';
+                    }
+                    this.saveSyncMeta();
+                    return true;
+                },
+
+                setupSyncNetworkListeners() {
+                    if (typeof window === 'undefined' || !window.addEventListener) return false;
+                    window.addEventListener('online', () => {
+                        this.syncOnline = true;
+                        if (this.syncPendingChanges && this.isSyncReady()) this.queueSyncPush();
+                    });
+                    window.addEventListener('offline', () => {
+                        this.syncOnline = false;
+                        this.syncStatus = 'offline';
+                        this.syncMessage = 'Offline. Changes will sync when internet returns.';
+                    });
+                    return true;
                 },
 
                 getSyncConfig() {
@@ -1210,7 +1345,9 @@
                         'signed-in': 'Signed in',
                         syncing: 'Syncing',
                         synced: 'Synced',
-                        error: 'Error'
+                        error: 'Error',
+                        offline: 'Offline',
+                        unsynced: 'Unsynced'
                     };
                     return labels[this.syncStatus] || this.syncStatus;
                 },
@@ -1223,13 +1360,75 @@
                         'signed-in': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
                         syncing: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200',
                         synced: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
-                        error: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200'
+                        error: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200',
+                        offline: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+                        unsynced: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
                     };
                     return classes[this.syncStatus] || classes['signed-out'];
                 },
 
+                syncHealthState() {
+                    if (!this.isSyncConfigured()) return 'needs-setup';
+                    if (!this.syncOnline) return 'offline';
+                    if (!this.syncUser) return 'needs-sign-in';
+                    if (this.syncBusy || this.syncStatus === 'syncing') return 'saving';
+                    if (this.syncLastError || this.syncStatus === 'error') return 'error';
+                    if (this.syncPendingChanges) return 'unsynced';
+                    if (this.syncLastCloudSaveAt || this.syncLastCloudLoadAt || this.syncLastSyncedAt) return 'up-to-date';
+                    return 'ready';
+                },
+
+                syncHealthLabel() {
+                    const labels = {
+                        'needs-setup': 'Needs setup',
+                        offline: 'Offline',
+                        'needs-sign-in': 'Needs sign in',
+                        saving: 'Saving',
+                        error: 'Sync error',
+                        unsynced: 'Unsynced',
+                        'up-to-date': 'Up to date',
+                        ready: 'Ready'
+                    };
+                    return labels[this.syncHealthState()];
+                },
+
+                syncHealthClass() {
+                    const classes = {
+                        'needs-setup': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
+                        offline: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+                        'needs-sign-in': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
+                        saving: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200',
+                        error: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200',
+                        unsynced: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
+                        'up-to-date': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
+                        ready: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'
+                    };
+                    return classes[this.syncHealthState()] || classes.ready;
+                },
+
+                syncHealthDetail() {
+                    const state = this.syncHealthState();
+                    if (state === 'needs-setup') return 'Add Supabase details before cloud sync can run.';
+                    if (state === 'offline') return 'Offline. Changes are saved on this device and waiting.';
+                    if (state === 'needs-sign-in') return 'Sign in to connect this device to cloud storage.';
+                    if (state === 'saving') return 'Auto-saving your latest data to cloud...';
+                    if (state === 'error') return this.syncLastError || this.syncMessage || 'Cloud sync failed.';
+                    if (state === 'unsynced') return 'Unsynced changes waiting for cloud save.';
+                    if (state === 'up-to-date') {
+                        if (this.syncLastCloudSaveAt) return 'Last cloud save: ' + this.syncLastCloudSaveAt;
+                        if (this.syncLastCloudLoadAt) return 'Last cloud load: ' + this.syncLastCloudLoadAt;
+                        return 'Cloud sync is up to date.';
+                    }
+                    return 'Signed in and ready to sync.';
+                },
+
                 requireSyncReady() {
                     if (!this.initSync()) return false;
+                    if (!this.syncOnline) {
+                        this.syncStatus = 'offline';
+                        this.syncMessage = 'Offline. Changes are saved on this device and waiting for cloud sync.';
+                        return false;
+                    }
                     if (!this.syncUser) {
                         this.syncStatus = 'signed-out';
                         this.syncMessage = 'Sign in before syncing this device.';
@@ -1263,6 +1462,8 @@
                     } catch (error) {
                         this.syncStatus = 'error';
                         this.syncMessage = error.message || 'Unable to sign in.';
+                        this.syncLastError = this.syncMessage;
+                        this.saveSyncMeta();
                         return false;
                     } finally {
                         this.syncBusy = false;
@@ -1284,11 +1485,19 @@
                 },
 
                 queueSyncPush() {
+                    if (!this.syncOnline) {
+                        this.syncStatus = 'offline';
+                        this.syncMessage = 'Offline. Changes are saved on this device and waiting for cloud sync.';
+                        this.saveSyncMeta();
+                        return;
+                    }
                     if (!this.isSyncReady()) return;
                     if (typeof window === 'undefined' || !window.setTimeout) return;
                     if (this.syncAutoPushTimer && window.clearTimeout) {
                         window.clearTimeout(this.syncAutoPushTimer);
                     }
+                    this.syncAutoSaveQueuedAt = new Date().toLocaleString();
+                    this.saveSyncMeta();
                     this.syncAutoPushTimer = window.setTimeout(() => {
                         this.pushSync(false);
                     }, 1500);
@@ -1316,11 +1525,18 @@
                         if (error) throw error;
                         this.syncStatus = 'synced';
                         this.syncLastSyncedAt = new Date().toLocaleString();
+                        this.syncLastCloudSaveAt = this.syncLastSyncedAt;
+                        this.syncPendingChanges = false;
+                        this.syncLastError = '';
+                        this.syncAutoSaveQueuedAt = '';
                         this.syncMessage = 'Laptop and iPhone data are connected for this account.';
+                        this.saveSyncMeta();
                         return true;
                     } catch (error) {
                         this.syncStatus = 'error';
                         this.syncMessage = error.message || 'Cloud save failed.';
+                        this.syncLastError = this.syncMessage;
+                        this.saveSyncMeta();
                         return false;
                     } finally {
                         if (manual) this.syncBusy = false;
@@ -1351,11 +1567,18 @@
                         this.persistState({ sync: false });
                         this.syncStatus = 'synced';
                         this.syncLastSyncedAt = data.updated_at ? new Date(data.updated_at).toLocaleString() : new Date().toLocaleString();
+                        this.syncLastCloudLoadAt = this.syncLastSyncedAt;
+                        this.syncPendingChanges = false;
+                        this.syncLastError = '';
+                        this.syncAutoSaveQueuedAt = '';
                         this.syncMessage = 'Cloud data loaded on this device.';
+                        this.saveSyncMeta();
                         return true;
                     } catch (error) {
                         this.syncStatus = 'error';
                         this.syncMessage = error.message || 'Cloud load failed.';
+                        this.syncLastError = this.syncMessage;
+                        this.saveSyncMeta();
                         return false;
                     } finally {
                         if (manual) this.syncBusy = false;

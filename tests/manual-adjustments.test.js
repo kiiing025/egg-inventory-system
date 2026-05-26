@@ -430,6 +430,121 @@ test('app exposes a sync page wired to Supabase configuration', () => {
     assert.match(syncConfig, /tableName:\s*'egg_app_state'/);
 });
 
+test('sync metadata tracks unsynced local changes', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+
+    assert.equal(app.syncPendingChanges, false);
+    assert.equal(app.markLocalSyncChange(), true);
+    assert.equal(app.syncPendingChanges, true);
+    assert.match(app.syncLastLocalChangeAt, /^\d{1,2}\/\d{1,2}\/\d{4}/);
+
+    const meta = JSON.parse(storage.getItem('egg_sync_meta'));
+    assert.equal(meta.syncPendingChanges, true);
+    assert.equal(meta.syncLastLocalChangeAt, app.syncLastLocalChangeAt);
+});
+
+test('sync health labels prioritize setup, offline, sign in, saving, errors, unsynced, and up to date', () => {
+    const app = loadEggApp();
+
+    assert.equal(app.syncHealthState(), 'needs-setup');
+    assert.equal(app.syncHealthLabel(), 'Needs setup');
+
+    app.isSyncConfigured = () => true;
+    app.syncOnline = false;
+    assert.equal(app.syncHealthState(), 'offline');
+    assert.equal(app.syncHealthLabel(), 'Offline');
+
+    app.syncOnline = true;
+    app.syncUser = null;
+    assert.equal(app.syncHealthState(), 'needs-sign-in');
+
+    app.syncUser = { id: 'user-1' };
+    app.syncStatus = 'syncing';
+    assert.equal(app.syncHealthState(), 'saving');
+
+    app.syncStatus = 'error';
+    app.syncLastError = 'Cloud save failed.';
+    assert.equal(app.syncHealthState(), 'error');
+    assert.equal(app.syncHealthDetail(), 'Cloud save failed.');
+
+    app.syncStatus = 'signed-in';
+    app.syncLastError = '';
+    app.syncPendingChanges = true;
+    assert.equal(app.syncHealthState(), 'unsynced');
+    assert.equal(app.syncHealthLabel(), 'Unsynced');
+
+    app.syncPendingChanges = false;
+    app.syncLastCloudSaveAt = '5/26/2026, 9:30:00 AM';
+    assert.equal(app.syncHealthState(), 'up-to-date');
+    assert.equal(app.syncHealthDetail(), 'Last cloud save: 5/26/2026, 9:30:00 AM');
+});
+
+test('successful push and pull update sync metadata', async () => {
+    const app = loadEggApp(createStorage());
+    app.requireSyncReady = () => true;
+    app.getSyncConfig = () => ({ tableName: 'egg_app_state', supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' });
+    app.syncUser = { id: 'user-1' };
+    app.syncPendingChanges = true;
+    app.syncClient = {
+        from() {
+            return {
+                upsert: async () => ({ error: null }),
+                select() {
+                    const query = {
+                        eq() {
+                            return query;
+                        },
+                        maybeSingle: async () => ({
+                            data: {
+                                data: {
+                                    inventory: 77,
+                                    sales: [],
+                                    expenses: [],
+                                    cashAdjustments: [],
+                                    stockAdjustments: [],
+                                    dailyClosings: [],
+                                    config: { regularPrice: 250, loanPrice: 270 }
+                                },
+                                updated_at: '2026-05-26T16:00:00.000Z'
+                            },
+                            error: null
+                        })
+                    };
+                    return query;
+                }
+            };
+        }
+    };
+
+    assert.equal(await app.pushSync(false), true);
+    assert.equal(app.syncPendingChanges, false);
+    assert.notEqual(app.syncLastCloudSaveAt, '');
+    assert.equal(app.syncLastError, '');
+
+    app.syncPendingChanges = true;
+    assert.equal(await app.pullSync(false), true);
+    assert.equal(app.inventory, 77);
+    assert.equal(app.syncPendingChanges, false);
+    assert.notEqual(app.syncLastCloudLoadAt, '');
+    assert.equal(app.syncLastError, '');
+});
+
+test('sync health is visible on dashboard and cloud sync page', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Sync Health/);
+    assert.match(html, /syncHealthLabel\(\)/);
+    assert.match(html, /syncHealthDetail\(\)/);
+    assert.match(html, /Connection/);
+    assert.match(html, /Account/);
+    assert.match(html, /Last local change/);
+    assert.match(html, /Last cloud save/);
+    assert.match(html, /Last cloud load/);
+    assert.match(html, /Unsynced changes/);
+    assert.match(html, /Last error/);
+});
+
 test('persistable sync state contains all business data', () => {
     const app = loadEggApp();
     app.inventory = 42;
