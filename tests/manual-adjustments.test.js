@@ -266,6 +266,17 @@ test('customer search selects customers and collects one loan from customer page
     assert.equal(app.getSelectedCustomerSummary().unpaidAmount, 0);
 });
 
+test('customer book sorts customer names alphabetically', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 12, customer: 'Ben', quantity: 1, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-05-03', paidDate: '' },
+        { id: 13, customer: 'Ana', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-02', paidDate: '2026-05-02' },
+        { id: 14, customer: 'Chandra', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-01', paidDate: '2026-05-01' }
+    ];
+
+    assert.equal(app.getCustomerSummaries().map(customer => customer.name).join('|'), 'Ana|Ben|Chandra');
+});
+
 test('customer book can rename a customer and merge misspelled names', () => {
     const storage = createStorage();
     const app = loadEggApp(storage);
@@ -300,12 +311,39 @@ test('customer book can rename a customer and merge misspelled names', () => {
     assert.equal(savedData.sales.find(sale => sale.id === 21).customer, 'Chandra');
 });
 
+test('customer book can remove a customer without changing current stock', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 44;
+    app.sales = [
+        { id: 23, customer: 'Chandra', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-01', paidDate: '2026-05-01' },
+        { id: 24, customer: 'Chandra', quantity: 2, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-05-02', paidDate: '' },
+        { id: 25, customer: 'Ana', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-03', paidDate: '2026-05-03' }
+    ];
+
+    app.selectCustomer('chandra');
+    assert.equal(app.removeSelectedCustomer(), true);
+
+    assert.equal(app.inventory, 44);
+    assert.equal(app.sales.length, 1);
+    assert.equal(app.sales[0].customer, 'Ana');
+    assert.equal(app.selectedCustomerKey, '');
+    assert.equal(app.getCustomerSummaries().length, 1);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.inventory, 44);
+    assert.equal(savedData.sales.length, 1);
+    assert.equal(savedData.sales[0].customer, 'Ana');
+});
+
 test('customer book edit controls are rendered', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 
     assert.match(html, /Edit Name/);
+    assert.match(html, /Remove Customer/);
     assert.match(html, /customerEditForm\.open/);
     assert.match(html, /@click="openCustomerEdit\(getSelectedCustomerSummary\(\)\)"/);
+    assert.match(html, /@click="removeSelectedCustomer\(\)"/);
 });
 
 test('customer order history can edit an order without changing current stock', () => {

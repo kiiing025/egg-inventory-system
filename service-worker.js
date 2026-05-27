@@ -1,4 +1,4 @@
-const CACHE_NAME = 'egg-inventory-cache-v14';
+const CACHE_NAME = 'egg-inventory-cache-v15';
 const APP_ASSETS = [
   './',
   './index.html',

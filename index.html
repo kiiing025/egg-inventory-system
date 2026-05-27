@@ -454,10 +454,16 @@
                                 </p>
                             </div>
                             <div class="flex flex-col gap-2 sm:items-end">
-                                <button @click="openCustomerEdit(getSelectedCustomerSummary())" class="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-700 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
-                                    <i data-lucide="pencil" class="h-4 w-4"></i>
-                                    Edit Name
-                                </button>
+                                <div class="flex flex-wrap gap-2 sm:justify-end">
+                                    <button @click="openCustomerEdit(getSelectedCustomerSummary())" class="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-700 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                                        <i data-lucide="pencil" class="h-4 w-4"></i>
+                                        Edit Name
+                                    </button>
+                                    <button @click="removeSelectedCustomer()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-100 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50">
+                                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                        Remove Customer
+                                    </button>
+                                </div>
                                 <div class="rounded-xl bg-white px-4 py-3 text-right shadow-sm dark:bg-slate-800">
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Unpaid</p>
                                     <p class="text-xl font-black text-amber-600 dark:text-amber-400" x-text="formatPHP(getSelectedCustomerSummary().unpaidAmount)"></p>
@@ -2605,9 +2611,10 @@
                             })
                         }))
                         .sort((a, b) => {
+                            const nameDiff = a.name.localeCompare(b.name);
+                            if (nameDiff !== 0) return nameDiff;
                             if (b.unpaidAmount !== a.unpaidAmount) return b.unpaidAmount - a.unpaidAmount;
-                            if (b.lastOrderTimestamp !== a.lastOrderTimestamp) return b.lastOrderTimestamp - a.lastOrderTimestamp;
-                            return a.name.localeCompare(b.name);
+                            return b.lastOrderTimestamp - a.lastOrderTimestamp;
                         });
                 },
 
@@ -2683,6 +2690,23 @@
 
                     if (changed) this.persistState();
                     this.closeCustomerEdit();
+                    return true;
+                },
+
+                removeSelectedCustomer() {
+                    const customer = this.getSelectedCustomerSummary();
+                    if (!customer) return false;
+
+                    const matchingSales = this.sales.filter(sale => this.getCustomerKey(sale.customer) === customer.key);
+                    if (matchingSales.length === 0) return false;
+
+                    if (typeof confirm === 'function' && !confirm(`Remove "${customer.name}" and ${matchingSales.length} order record${matchingSales.length === 1 ? '' : 's'} from the Customer Book? Current stock will not change.`)) {
+                        return false;
+                    }
+
+                    this.sales = this.sales.filter(sale => this.getCustomerKey(sale.customer) !== customer.key);
+                    this.selectedCustomerKey = '';
+                    this.persistState();
                     return true;
                 },
 
