@@ -1389,17 +1389,69 @@
                             quantity,
                             type,
                             unitPrice: type === 'Loaned' ? 270 : 250,
-                            paid: true
+                            paid: true,
+                            historyOnly: true,
+                            affectsCash: false
                         };
                     });
                 },
 
+                isHistoricalAprilSale(sale) {
+                    return Boolean(sale && (
+                        sale.source === 'historical-april-2026-sheet' ||
+                        String(sale.id || '').startsWith('historical-april-2026-')
+                    ));
+                },
+
+                isHistoryOnlySale(sale) {
+                    return Boolean(sale && (
+                        sale.historyOnly === true ||
+                        sale.affectsCash === false ||
+                        this.isHistoricalAprilSale(sale)
+                    ));
+                },
+
+                isFinancialSale(sale) {
+                    return Boolean(sale) && !this.isHistoryOnlySale(sale);
+                },
+
+                normalizeHistoricalAprilSales() {
+                    let changed = false;
+
+                    this.sales.forEach(sale => {
+                        if (!this.isHistoricalAprilSale(sale)) return;
+
+                        if (sale.historyOnly !== true) {
+                            sale.historyOnly = true;
+                            changed = true;
+                        }
+                        if (sale.affectsCash !== false) {
+                            sale.affectsCash = false;
+                            changed = true;
+                        }
+                        if (!sale.source) {
+                            sale.source = 'historical-april-2026-sheet';
+                            changed = true;
+                        }
+                        if (!sale.eggType) {
+                            sale.eggType = 'Large';
+                            changed = true;
+                        }
+                    });
+
+                    return changed;
+                },
+
                 importHistoricalAprilSales() {
+                    const normalizedExistingSales = this.normalizeHistoricalAprilSales();
                     const existingIds = new Set(this.sales.map(sale => String(sale.id)));
                     const missingSales = this.getHistoricalAprilSales()
                         .filter(sale => !existingIds.has(String(sale.id)));
 
-                    if (missingSales.length === 0) return 0;
+                    if (missingSales.length === 0) {
+                        if (normalizedExistingSales) this.persistState();
+                        return 0;
+                    }
 
                     this.sales = [...this.sales, ...missingSales];
                     this.persistState();
@@ -1425,12 +1477,13 @@
                             .map(sale => this.getCustomerKey(sale.customer))
                             .filter(Boolean)
                     );
-                    const collectedRevenue = sales
+                    const financialSales = sales.filter(sale => this.isFinancialSale(sale));
+                    const collectedRevenue = financialSales
                         .filter(sale => sale.paid)
                         .reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
                     const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
                     const cashAdjustmentTotal = cashAdjustments.reduce((sum, adjustment) => sum + Number(adjustment.difference || 0), 0);
-                    const outstandingLoans = sales
+                    const outstandingLoans = financialSales
                         .filter(sale => sale.type === 'Loaned' && !sale.paid)
                         .reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
 
@@ -2173,7 +2226,7 @@
 
                 getCashOnHand() {
                     let totalCollectedRevenue = this.sales
-                        .filter(s => s.paid)
+                        .filter(s => this.isFinancialSale(s) && s.paid)
                         .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
                     let totalOutflowExpenses = this.expenses
                         .reduce((sum, e) => sum + e.amount, 0);
@@ -2258,6 +2311,7 @@
 
                 getNetProfit() {
                     let totalGrossRevenue = this.sales
+                        .filter(s => this.isFinancialSale(s))
                         .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
                     let costOfGoodsSold = this.expenses
                         .filter(e => e.category === 'Restocking Cost')
@@ -2267,7 +2321,7 @@
 
                 getOutstandingLoans() {
                     return this.sales
-                        .filter(s => s.type === 'Loaned' && !s.paid)
+                        .filter(s => this.isFinancialSale(s) && s.type === 'Loaned' && !s.paid)
                         .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
                 },
 
@@ -2302,8 +2356,9 @@
 
                 getDailyClosingSummary(dateValue = this.dailyClosingForm.date) {
                     const date = dateValue || this.formatDateForInput();
-                    const orderedSales = this.sales.filter(sale => this.isSameBusinessDate(sale.orderDate || sale.date, date));
-                    const paidSales = this.sales.filter(sale => sale.paid && this.isSameBusinessDate(sale.paidDate || sale.orderDate || sale.date, date));
+                    const financialSales = this.sales.filter(sale => this.isFinancialSale(sale));
+                    const orderedSales = financialSales.filter(sale => this.isSameBusinessDate(sale.orderDate || sale.date, date));
+                    const paidSales = financialSales.filter(sale => sale.paid && this.isSameBusinessDate(sale.paidDate || sale.orderDate || sale.date, date));
                     const dailyExpenses = this.expenses.filter(expense => this.isSameBusinessDate(expense.date, date));
 
                     const salesRevenue = orderedSales.reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
@@ -2624,6 +2679,7 @@
 
                     // For sales, the date is stored as ISO string (full date), so we can parse directly
                     const weeklySales = this.sales.filter(s => {
+                        if (!this.isFinancialSale(s)) return false;
                         let saleDate;
                         try {
                             const saleDateValue = s.orderDate || s.date;

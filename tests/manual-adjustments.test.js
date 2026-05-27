@@ -782,7 +782,20 @@ test('historical April customer sales import without changing current stock', ()
     assert.equal(importedSales.reduce((sum, sale) => sum + sale.quantity, 0), 36);
     assert.equal(importedSales.reduce((sum, sale) => sum + sale.quantity * sale.unitPrice, 0), 9080);
     assert.equal(importedSales.every(sale => sale.paid), true);
+    assert.equal(importedSales.every(sale => sale.historyOnly === true), true);
+    assert.equal(importedSales.every(sale => sale.affectsCash === false), true);
     assert.equal(importedSales.filter(sale => sale.type === 'Loaned').length, 4);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getNetProfit(), 0);
+    assert.equal(app.getOutstandingLoans(), 0);
+
+    const aprilSevenSummary = app.getDailyClosingSummary('2026-04-07');
+    assert.equal(aprilSevenSummary.orderCount, 0);
+    assert.equal(aprilSevenSummary.salesRevenue, 0);
+    assert.equal(aprilSevenSummary.collectedRevenue, 0);
+    app.exportForm.startDate = '2026-04-01';
+    app.exportForm.endDate = '2026-04-30';
+    assert.equal(app.getWeeklyData().weeklySales.length, 0);
 
     const honey = importedSales.find(sale => sale.customer === 'Honey');
     assert.equal(honey.orderDate, '2026-04-20');
@@ -799,6 +812,48 @@ test('historical April customer sales import without changing current stock', ()
 
     app.init();
     assert.equal(app.sales.filter(sale => sale.source === 'historical-april-2026-sheet').length, 30);
+});
+
+test('existing imported historical April sales are migrated away from cash totals', () => {
+    const storage = createStorage({
+        egg_app_data: JSON.stringify({
+            inventory: 500,
+            sales: [
+                {
+                    id: 'historical-april-2026-01',
+                    source: 'historical-april-2026-sheet',
+                    date: '2026-04-07',
+                    orderDate: '2026-04-07',
+                    paidDate: '2026-04-07',
+                    customer: 'Jayne Labuntog',
+                    quantity: 3,
+                    type: 'Regular',
+                    unitPrice: 250,
+                    paid: true
+                }
+            ],
+            expenses: [],
+            cashAdjustments: [],
+            stockAdjustments: [],
+            dailyClosings: [],
+            config: { regularPrice: 250, loanPrice: 270 }
+        })
+    });
+    const app = loadEggApp(storage);
+
+    app.init();
+
+    const migratedSale = app.sales.find(sale => sale.id === 'historical-april-2026-01');
+    assert.equal(migratedSale.historyOnly, true);
+    assert.equal(migratedSale.affectsCash, false);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getNetProfit(), 0);
+    assert.equal(app.getDailyClosingSummary('2026-04-07').salesRevenue, 0);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    const savedMigratedSale = savedData.sales.find(sale => sale.id === 'historical-april-2026-01');
+    assert.equal(savedMigratedSale.historyOnly, true);
+    assert.equal(savedMigratedSale.affectsCash, false);
 });
 
 test('persistable sync state contains all business data', () => {
