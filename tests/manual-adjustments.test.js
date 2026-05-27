@@ -266,6 +266,48 @@ test('customer search selects customers and collects one loan from customer page
     assert.equal(app.getSelectedCustomerSummary().unpaidAmount, 0);
 });
 
+test('customer book can rename a customer and merge misspelled names', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.sales = [
+        { id: 20, customer: 'Chandra', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-01', paidDate: '2026-05-01' },
+        { id: 21, customer: 'Chanda', quantity: 1, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-05-03', paidDate: '' },
+        { id: 22, customer: 'Ana', quantity: 2, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-05-02', paidDate: '2026-05-02' }
+    ];
+
+    app.selectCustomer('chanda');
+    assert.equal(app.openCustomerEdit(app.getSelectedCustomerSummary()), true);
+    assert.equal(app.customerEditForm.open, true);
+    assert.equal(app.customerEditForm.originalName, 'Chanda');
+
+    app.customerEditForm.newName = ' Chandra ';
+    assert.equal(app.saveCustomerName(), true);
+
+    assert.equal(app.sales.find(sale => sale.id === 20).customer, 'Chandra');
+    assert.equal(app.sales.find(sale => sale.id === 21).customer, 'Chandra');
+    assert.equal(app.sales.find(sale => sale.id === 22).customer, 'Ana');
+    assert.equal(app.customerEditForm.open, false);
+    assert.equal(app.selectedCustomerKey, 'chandra');
+
+    const summaries = app.getCustomerSummaries();
+    const chandra = summaries.find(customer => customer.key === 'chandra');
+    assert.equal(summaries.length, 2);
+    assert.equal(chandra.orderCount, 2);
+    assert.equal(chandra.totalQuantity, 2);
+    assert.equal(chandra.unpaidAmount, 270);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.sales.find(sale => sale.id === 21).customer, 'Chandra');
+});
+
+test('customer book edit controls are rendered', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Edit Name/);
+    assert.match(html, /customerEditForm\.open/);
+    assert.match(html, /@click="openCustomerEdit\(getSelectedCustomerSummary\(\)\)"/);
+});
+
 test('dashboard includes a customer loan reminder shortcut', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 
