@@ -311,6 +311,57 @@ test('customer book can rename a customer and merge misspelled names', () => {
     assert.equal(savedData.sales.find(sale => sale.id === 21).customer, 'Chandra');
 });
 
+test('customer rename keeps older imported history out of cash totals', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.applyPersistedState({
+        inventory: 100,
+        sales: [
+            {
+                id: 2201,
+                customer: 'Chandra',
+                quantity: 1,
+                unitPrice: 270,
+                type: 'Loaned',
+                paid: true,
+                orderDate: '2026-04-20',
+                paidDate: '2026-05-06'
+            },
+            {
+                id: 2202,
+                customer: 'Chanda',
+                quantity: 3,
+                unitPrice: 250,
+                type: 'Regular',
+                paid: true,
+                orderDate: '2026-04-07',
+                paidDate: '2026-04-07'
+            }
+        ],
+        expenses: [],
+        cashAdjustments: [],
+        stockAdjustments: [],
+        dailyClosings: []
+    });
+
+    assert.equal(app.getCashOnHand(), 0);
+
+    app.selectCustomer('chandra');
+    assert.equal(app.openCustomerEdit(app.getSelectedCustomerSummary()), true);
+    app.customerEditForm.newName = 'Chanda';
+
+    assert.equal(app.saveCustomerName(), true);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.sales.every(sale => sale.customer === 'Chanda'), true);
+    assert.equal(app.sales.every(sale => sale.historyOnly === true), true);
+    assert.equal(app.sales.every(sale => sale.affectsCash === false), true);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.sales.every(sale => sale.customer === 'Chanda'), true);
+    assert.equal(savedData.sales.every(sale => sale.historyOnly === true), true);
+    assert.equal(savedData.sales.every(sale => sale.affectsCash === false), true);
+});
+
 test('customer book can remove a customer without changing current stock', () => {
     const storage = createStorage();
     const app = loadEggApp(storage);

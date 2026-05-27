@@ -1449,6 +1449,7 @@
                     this.stockAdjustments = Array.isArray(savedData.stockAdjustments) ? savedData.stockAdjustments : [];
                     this.dailyClosings = Array.isArray(savedData.dailyClosings) ? savedData.dailyClosings : [];
                     if (savedData.config) this.config = savedData.config;
+                    this.normalizeHistoricalAprilSales();
                     return true;
                 },
 
@@ -1511,10 +1512,36 @@
                     });
                 },
 
+                getHistoricalAprilSaleSignature(sale, includeCustomer = true) {
+                    const orderDate = this.getDateInputValue(sale.orderDate || sale.date);
+                    const paidDate = this.getDateInputValue(sale.paidDate || (sale.paid ? orderDate : ''));
+                    const type = sale.type === 'Loaned' ? 'Loaned' : 'Regular';
+                    const quantity = Number(sale.quantity || 0);
+                    const unitPrice = Number(sale.unitPrice || this.getDefaultUnitPrice(type) || 0);
+                    const customer = includeCustomer ? this.getCustomerKey(sale.customer) : '';
+                    return [customer, orderDate, paidDate, type, quantity, unitPrice].join('|');
+                },
+
+                getHistoricalAprilSaleSignatures(includeCustomer = true) {
+                    return new Set(this.getHistoricalAprilSales().map(sale => this.getHistoricalAprilSaleSignature(sale, includeCustomer)));
+                },
+
+                isLegacyHistoricalAprilSale(sale) {
+                    if (!sale) return false;
+                    const orderDate = this.getDateInputValue(sale.orderDate || sale.date);
+                    if (!orderDate || !orderDate.startsWith('2026-04-')) return false;
+
+                    const exactSignature = this.getHistoricalAprilSaleSignature(sale, true);
+                    const looseSignature = this.getHistoricalAprilSaleSignature(sale, false);
+                    return this.getHistoricalAprilSaleSignatures(true).has(exactSignature) ||
+                        this.getHistoricalAprilSaleSignatures(false).has(looseSignature);
+                },
+
                 isHistoricalAprilSale(sale) {
                     return Boolean(sale && (
                         sale.source === 'historical-april-2026-sheet' ||
-                        String(sale.id || '').startsWith('historical-april-2026-')
+                        String(sale.id || '').startsWith('historical-april-2026-') ||
+                        this.isLegacyHistoricalAprilSale(sale)
                     ));
                 },
 
