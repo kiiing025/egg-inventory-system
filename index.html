@@ -1286,6 +1286,7 @@
                         const savedData = JSON.parse(localStorage.getItem('egg_app_data'));
                         this.applyPersistedState(savedData);
                     }
+                    this.importHistoricalAprilSales();
                     const savedTheme = localStorage.getItem('egg_dark_mode');
                     this.darkMode = savedTheme === 'true';
                     if (typeof document !== 'undefined') {
@@ -1334,6 +1335,75 @@
                     this.dailyClosings = Array.isArray(savedData.dailyClosings) ? savedData.dailyClosings : [];
                     if (savedData.config) this.config = savedData.config;
                     return true;
+                },
+
+                getHistoricalAprilSales() {
+                    const rows = [
+                        ['Jayne Labuntog', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 3],
+                        ['Joy', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Maura Oraiz', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Ivy Mabitag', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Bhebe Alcantara', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Jayne Labuntog', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 3],
+                        ['Jong Labuntog', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Michael Robles', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Jelissa Quintos', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Randy Briones', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Ivy Mabitag', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 1],
+                        ['Jayne Labuntog', '2026-04-07', '2026-04-07', '2026-04-06', 'Regular', 3],
+                        ['Mabel', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Joyce', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Kathy', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Marlon', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Tata Labitad', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Maricel', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Maya', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Nicole Labuntog', '2026-04-13', '2026-04-07', '2026-04-13', 'Regular', 1],
+                        ['Honey', '2026-04-20', '2026-05-19', '2026-04-20', 'Loaned', 1],
+                        ['Chandra', '2026-04-20', '2026-05-06', '2026-04-20', 'Loaned', 1],
+                        ['Customer Walk In', '2026-04-20', '2026-04-20', '2026-04-07', 'Regular', 1],
+                        ['Bhebe Alcantara', '2026-04-20', '2026-05-06', '2026-04-20', 'Loaned', 1],
+                        ['Maura Oraiz', '2026-04-20', '2026-04-20', '2026-04-20', 'Regular', 1],
+                        ['Shiela', '2026-04-20', '2026-04-20', '2026-04-20', 'Regular', 1],
+                        ['Sir Vince', '2026-04-20', '2026-04-20', '2026-04-20', 'Regular', 1],
+                        ['Lourdes', '2026-04-20', '2026-04-20', '2026-04-20', 'Regular', 1],
+                        ['Mariel', '2026-04-20', '2026-05-07', '2026-04-20', 'Loaned', 1],
+                        ['Edwin', '2026-04-30', '2026-04-30', '2026-04-27', 'Regular', 1]
+                    ];
+
+                    return rows.map(([customer, orderDate, paidDate, weekStartDate, type, quantity], index) => {
+                        const orderDateDisplay = this.formatDisplayDate(orderDate);
+                        const paidDateDisplay = this.formatDisplayDate(paidDate);
+                        return {
+                            id: `historical-april-2026-${String(index + 1).padStart(2, '0')}`,
+                            source: 'historical-april-2026-sheet',
+                            date: orderDate,
+                            orderDate,
+                            dateDisplay: orderDateDisplay,
+                            orderDateDisplay,
+                            paidDate,
+                            paidDateDisplay,
+                            weekStartDate,
+                            eggType: 'Large',
+                            customer,
+                            quantity,
+                            type,
+                            unitPrice: type === 'Loaned' ? 270 : 250,
+                            paid: true
+                        };
+                    });
+                },
+
+                importHistoricalAprilSales() {
+                    const existingIds = new Set(this.sales.map(sale => String(sale.id)));
+                    const missingSales = this.getHistoricalAprilSales()
+                        .filter(sale => !existingIds.has(String(sale.id)));
+
+                    if (missingSales.length === 0) return 0;
+
+                    this.sales = [...this.sales, ...missingSales];
+                    this.persistState();
+                    return missingSales.length;
                 },
 
                 persistState(options = {}) {

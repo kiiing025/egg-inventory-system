@@ -760,6 +760,47 @@ test('backup center UI is present on the cloud sync page', () => {
     assert.match(html, /@click="restoreBackupFromText\(\)"/);
 });
 
+test('historical April customer sales import without changing current stock', () => {
+    const storage = createStorage({
+        egg_app_data: JSON.stringify({
+            inventory: 500,
+            sales: [],
+            expenses: [],
+            cashAdjustments: [],
+            stockAdjustments: [],
+            dailyClosings: [],
+            config: { regularPrice: 250, loanPrice: 270 }
+        })
+    });
+    const app = loadEggApp(storage);
+
+    app.init();
+
+    const importedSales = app.sales.filter(sale => sale.source === 'historical-april-2026-sheet');
+    assert.equal(importedSales.length, 30);
+    assert.equal(app.inventory, 500);
+    assert.equal(importedSales.reduce((sum, sale) => sum + sale.quantity, 0), 36);
+    assert.equal(importedSales.reduce((sum, sale) => sum + sale.quantity * sale.unitPrice, 0), 9080);
+    assert.equal(importedSales.every(sale => sale.paid), true);
+    assert.equal(importedSales.filter(sale => sale.type === 'Loaned').length, 4);
+
+    const honey = importedSales.find(sale => sale.customer === 'Honey');
+    assert.equal(honey.orderDate, '2026-04-20');
+    assert.equal(honey.paidDate, '2026-05-19');
+    assert.equal(honey.unitPrice, 270);
+    assert.equal(honey.eggType, 'Large');
+
+    const jayneSales = importedSales.filter(sale => sale.customer === 'Jayne Labuntog');
+    assert.equal(jayneSales.length, 3);
+    assert.equal(jayneSales.reduce((sum, sale) => sum + sale.quantity, 0), 9);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.sales.filter(sale => sale.source === 'historical-april-2026-sheet').length, 30);
+
+    app.init();
+    assert.equal(app.sales.filter(sale => sale.source === 'historical-april-2026-sheet').length, 30);
+});
+
 test('persistable sync state contains all business data', () => {
     const app = loadEggApp();
     app.inventory = 42;
