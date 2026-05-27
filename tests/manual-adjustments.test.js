@@ -308,6 +308,63 @@ test('customer book edit controls are rendered', () => {
     assert.match(html, /@click="openCustomerEdit\(getSelectedCustomerSummary\(\)\)"/);
 });
 
+test('customer order history can edit an order without changing current stock', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 88;
+    app.sales = [
+        {
+            id: 30,
+            customer: 'Chandra',
+            quantity: 1,
+            unitPrice: 250,
+            type: 'Regular',
+            paid: true,
+            orderDate: '2026-05-01',
+            orderDateDisplay: 'May 1',
+            paidDate: '2026-05-01',
+            paidDateDisplay: 'May 1'
+        }
+    ];
+
+    assert.equal(app.openCustomerOrderEdit(30), true);
+    assert.equal(app.customerOrderEditForm.open, true);
+    assert.equal(app.customerOrderEditForm.quantity, 1);
+
+    app.customerOrderEditForm.quantity = 3;
+    app.customerOrderEditForm.type = 'Loaned';
+    app.customerOrderEditForm.unitPrice = 270;
+    app.customerOrderEditForm.orderDate = '2026-04-20';
+    app.customerOrderEditForm.paid = false;
+    app.customerOrderEditForm.paidDate = '';
+
+    assert.equal(app.saveCustomerOrderEdit(), true);
+
+    const sale = app.sales.find(record => record.id === 30);
+    assert.equal(app.inventory, 88);
+    assert.equal(sale.quantity, 3);
+    assert.equal(sale.type, 'Loaned');
+    assert.equal(sale.unitPrice, 270);
+    assert.equal(sale.orderDate, '2026-04-20');
+    assert.equal(sale.orderDateDisplay, 'Apr 20');
+    assert.equal(sale.paid, false);
+    assert.equal(sale.paidDate, '');
+    assert.equal(sale.paidDateDisplay, '');
+    assert.equal(app.getSelectedCustomerSummary().unpaidAmount, 810);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.inventory, 88);
+    assert.equal(savedData.sales[0].quantity, 3);
+});
+
+test('customer order history edit controls are rendered', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Edit Order/);
+    assert.match(html, /customerOrderEditForm\.open/);
+    assert.match(html, /@click="openCustomerOrderEdit\(sale\.id\)"/);
+});
+
 test('dashboard includes a customer loan reminder shortcut', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 

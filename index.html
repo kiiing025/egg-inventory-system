@@ -509,9 +509,15 @@
                                                     </span>
                                                 </p>
                                             </div>
-                                            <button x-show="sale.type === 'Loaned' && !sale.paid" @click="collectCustomerLoan(sale.id)" class="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition-colors">
-                                                Mark Paid
-                                            </button>
+                                            <div class="flex flex-wrap gap-2 sm:justify-end">
+                                                <button @click="openCustomerOrderEdit(sale.id)" class="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                                                    <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
+                                                    Edit Order
+                                                </button>
+                                                <button x-show="sale.type === 'Loaned' && !sale.paid" @click="collectCustomerLoan(sale.id)" class="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition-colors">
+                                                    Mark Paid
+                                                </button>
+                                            </div>
                                         </div>
                                     </template>
                                 </div>
@@ -1086,6 +1092,57 @@
         </div>
     </div>
 
+    <!-- CUSTOMER ORDER EDIT MODAL -->
+    <div x-show="customerOrderEditForm.open" @click="closeCustomerOrderEdit()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
+
+    <div x-show="customerOrderEditForm.open" class="fixed inset-x-4 top-10 mx-auto max-w-lg rounded-2xl bg-white dark:bg-slate-900 shadow-2xl z-50 border border-slate-200 dark:border-slate-700 overflow-hidden" style="display: none;" x-transition>
+        <div class="px-5 py-4 border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+            <h2 class="text-lg font-bold">Edit Order</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Past customer record. Current stock will not change.
+            </p>
+        </div>
+
+        <div class="p-5 grid gap-4 sm:grid-cols-2">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Order date</label>
+                <input type="date" x-model="customerOrderEditForm.orderDate" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Trays sold</label>
+                <input type="number" min="1" step="1" x-model.number="customerOrderEditForm.quantity" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Sale type</label>
+                <select x-model="customerOrderEditForm.type" @change="updateCustomerOrderEditType()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="Regular">Regular</option>
+                    <option value="Loaned">Loaned</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Unit price</label>
+                <input type="number" min="0" step="0.01" x-model.number="customerOrderEditForm.unitPrice" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm font-semibold dark:border-slate-700 sm:col-span-2">
+                <input type="checkbox" x-model="customerOrderEditForm.paid" class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500">
+                Paid
+            </label>
+            <div x-show="customerOrderEditForm.paid" class="sm:col-span-2">
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Paid date</label>
+                <input type="date" x-model="customerOrderEditForm.paidDate" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+        </div>
+
+        <div class="flex gap-3 px-5 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+            <button @click="closeCustomerOrderEdit()" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold transition-colors">
+                Cancel
+            </button>
+            <button @click="saveCustomerOrderEdit()" class="flex-1 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors">
+                Save
+            </button>
+        </div>
+    </div>
+
     <!-- WEEKLY REPORT MODAL -->
     <div x-show="showReceiptModal" @click="showReceiptModal = false" class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40" style="display: none;" x-transition.opacity.duration.200ms></div>
 
@@ -1272,6 +1329,16 @@
                     originalKey: '',
                     originalName: '',
                     newName: ''
+                },
+                customerOrderEditForm: {
+                    open: false,
+                    saleId: null,
+                    orderDate: '',
+                    paidDate: '',
+                    quantity: 1,
+                    type: 'Regular',
+                    unitPrice: 250,
+                    paid: true
                 },
                 syncForm: {
                     email: '',
@@ -2616,6 +2683,92 @@
 
                     if (changed) this.persistState();
                     this.closeCustomerEdit();
+                    return true;
+                },
+
+                getDefaultUnitPrice(type) {
+                    return type === 'Loaned' ? this.config.loanPrice : this.config.regularPrice;
+                },
+
+                openCustomerOrderEdit(id) {
+                    const sale = this.sales.find(record => record.id === id);
+                    if (!sale) return false;
+
+                    const type = sale.type || 'Regular';
+                    const orderDate = this.getDateInputValue(sale.orderDate || sale.date) || this.formatDateForInput();
+                    const paidDate = sale.paid ? (this.getDateInputValue(sale.paidDate || sale.orderDate || sale.date) || orderDate) : '';
+
+                    this.customerOrderEditForm = {
+                        open: true,
+                        saleId: sale.id,
+                        orderDate,
+                        paidDate,
+                        quantity: Number(sale.quantity || 1),
+                        type,
+                        unitPrice: Number(sale.unitPrice ?? this.getDefaultUnitPrice(type)),
+                        paid: Boolean(sale.paid)
+                    };
+
+                    if (typeof window !== 'undefined' && window.setTimeout) {
+                        window.setTimeout(() => this.renderIcons(), 0);
+                    } else {
+                        this.renderIcons();
+                    }
+                    return true;
+                },
+
+                closeCustomerOrderEdit() {
+                    this.customerOrderEditForm = {
+                        open: false,
+                        saleId: null,
+                        orderDate: '',
+                        paidDate: '',
+                        quantity: 1,
+                        type: 'Regular',
+                        unitPrice: 250,
+                        paid: true
+                    };
+                },
+
+                updateCustomerOrderEditType() {
+                    this.customerOrderEditForm.unitPrice = this.getDefaultUnitPrice(this.customerOrderEditForm.type);
+                },
+
+                saveCustomerOrderEdit() {
+                    const sale = this.sales.find(record => record.id === this.customerOrderEditForm.saleId);
+                    if (!sale) return false;
+
+                    const quantity = Number(this.customerOrderEditForm.quantity);
+                    const unitPrice = Number(this.customerOrderEditForm.unitPrice);
+                    const orderDate = this.customerOrderEditForm.orderDate || this.formatDateForInput();
+                    const paid = Boolean(this.customerOrderEditForm.paid);
+                    const paidDate = paid ? (this.customerOrderEditForm.paidDate || orderDate) : '';
+
+                    if (!Number.isInteger(quantity) || quantity < 1) {
+                        alert('Trays sold must be a whole number above zero.');
+                        return false;
+                    }
+                    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+                        alert('Please enter a valid unit price.');
+                        return false;
+                    }
+
+                    const orderDateDisplay = this.formatDisplayDate(orderDate);
+                    const paidDateDisplay = paid ? this.formatDisplayDate(paidDate) : '';
+
+                    sale.date = orderDate;
+                    sale.orderDate = orderDate;
+                    sale.dateDisplay = orderDateDisplay;
+                    sale.orderDateDisplay = orderDateDisplay;
+                    sale.quantity = quantity;
+                    sale.type = this.customerOrderEditForm.type === 'Loaned' ? 'Loaned' : 'Regular';
+                    sale.unitPrice = unitPrice;
+                    sale.paid = paid;
+                    sale.paidDate = paidDate;
+                    sale.paidDateDisplay = paidDateDisplay;
+
+                    this.persistState();
+                    this.closeCustomerOrderEdit();
                     return true;
                 },
 
