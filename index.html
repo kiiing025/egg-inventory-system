@@ -402,9 +402,15 @@
 
         <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-6">
             <div class="rounded-2xl bg-white/95 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                    <h2 class="text-sm font-bold">Customer Book</h2>
-                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Search buyers, balances, and recent orders</p>
+                <div class="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-700/50 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-sm font-bold">Customer Book</h2>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Search buyers, balances, and recent orders</p>
+                    </div>
+                    <button @click="openPastOrderModal()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-600">
+                        <i data-lucide="history" class="h-4 w-4"></i>
+                        Add Past Order
+                    </button>
                 </div>
                 <div class="p-4 space-y-3">
                     <div class="relative">
@@ -459,6 +465,10 @@
                                         <i data-lucide="pencil" class="h-4 w-4"></i>
                                         Edit Name
                                     </button>
+                                    <button @click="openPastOrderModal(getSelectedCustomerSummary().name)" class="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-600">
+                                        <i data-lucide="history" class="h-4 w-4"></i>
+                                        Add Past Order
+                                    </button>
                                     <button @click="removeSelectedCustomer()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-100 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50">
                                         <i data-lucide="trash-2" class="h-4 w-4"></i>
                                         Remove Customer
@@ -503,6 +513,8 @@
                                                 <div class="flex flex-wrap items-center gap-2">
                                                     <span class="text-sm font-black" x-text="formatPHP(sale.quantity * sale.unitPrice)"></span>
                                                     <span :class="sale.type === 'Loaned' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'" class="rounded-full px-2 py-0.5 text-[10px] font-bold" x-text="sale.type"></span>
+                                                    <span x-show="isHistoryOnlySale(sale)" class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">History Only</span>
+                                                    <span x-show="sale.paymentMethod" class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" x-text="sale.paymentMethod"></span>
                                                     <span x-show="sale.paid" class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">PAID</span>
                                                     <span x-show="!sale.paid" class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">UNPAID</span>
                                                 </div>
@@ -520,7 +532,7 @@
                                                     <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
                                                     Edit Order
                                                 </button>
-                                                <button x-show="sale.type === 'Loaned' && !sale.paid" @click="collectCustomerLoan(sale.id)" class="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition-colors">
+                                                <button x-show="!isHistoryOnlySale(sale) && sale.type === 'Loaned' && !sale.paid" @click="collectCustomerLoan(sale.id)" class="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition-colors">
                                                     Mark Paid
                                                 </button>
                                             </div>
@@ -719,9 +731,15 @@
         <!-- LEDGER SECTION -->
         <section x-show="currentPage === 'sales'" class="space-y-6">
         <div class="rounded-2xl bg-white/95 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-white/10 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                <h2 class="text-sm font-bold">Sales Ledger</h2>
-                <p class="text-[11px] text-slate-500 dark:text-slate-400">Customer orders, paid dates, and unpaid loans</p>
+            <div class="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-700/50 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-sm font-bold">Sales Ledger</h2>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Customer orders, paid dates, and unpaid loans</p>
+                </div>
+                <button @click="openPastOrderModal()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-600">
+                    <i data-lucide="history" class="h-4 w-4"></i>
+                    Add Past Order
+                </button>
             </div>
 
             <div class="p-4 overflow-x-auto">
@@ -749,12 +767,14 @@
                                     <td class="py-2 font-medium" x-text="sale.customer"></td>
                                     <td class="py-2">
                                         <span :class="sale.type === 'Loaned' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'" class="px-1.5 py-0.5 rounded text-[10px]" x-text="sale.type"></span>
+                                        <span x-show="isHistoryOnlySale(sale)" class="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">History Only</span>
+                                        <span x-show="sale.paymentMethod" class="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" x-text="sale.paymentMethod"></span>
                                     </td>
                                     <td class="py-2 text-center" x-text="sale.quantity"></td>
                                     <td class="py-2 text-right font-semibold" x-text="formatPHP(sale.quantity * sale.unitPrice)"></td>
                                     <td class="py-2 text-center">
                                         <span x-show="!sale.paid" class="text-amber-500 font-bold text-[10px]">UNPAID</span>
-                                        <button x-show="sale.type === 'Loaned' && !sale.paid" @click="collectLoan(sale.id)" class="text-emerald-500 hover:text-emerald-600 font-bold text-[10px] underline">
+                                        <button x-show="!isHistoryOnlySale(sale) && sale.type === 'Loaned' && !sale.paid" @click="collectLoan(sale.id)" class="text-emerald-500 hover:text-emerald-600 font-bold text-[10px] underline">
                                             COLLECT
                                         </button>
                                         <span x-show="sale.paid" class="text-emerald-500 font-bold text-[10px]">PAID</span>
@@ -1137,6 +1157,10 @@
                 <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Paid date</label>
                 <input type="date" x-model="customerOrderEditForm.paidDate" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
             </div>
+            <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Payment tag</label>
+                <input type="text" list="payment-method-options" x-model="customerOrderEditForm.paymentMethod" placeholder="GCash, PayPal, GoTyme..." class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
         </div>
 
         <div class="flex gap-3 px-5 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
@@ -1148,6 +1172,74 @@
             </button>
         </div>
     </div>
+
+    <!-- PAST ORDER MODAL -->
+    <div x-show="pastOrderForm.open" @click="closePastOrderModal()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
+
+    <div x-show="pastOrderForm.open" class="fixed inset-x-4 top-8 mx-auto max-w-lg rounded-2xl bg-white dark:bg-slate-900 shadow-2xl z-50 border border-slate-200 dark:border-slate-700 overflow-hidden" style="display: none;" x-transition>
+        <div class="px-5 py-4 border-b border-slate-200 bg-amber-50 dark:border-slate-700 dark:bg-amber-950/20">
+            <h2 class="text-lg font-bold">Add Past Order</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                History Only records will not change cash, profit, receivables, or stock.
+            </p>
+        </div>
+
+        <div class="p-5 grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Customer name</label>
+                <input type="text" x-model="pastOrderForm.customer" placeholder="Customer Name" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Order date</label>
+                <input type="date" x-model="pastOrderForm.orderDate" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Trays sold</label>
+                <input type="number" min="1" step="1" x-model.number="pastOrderForm.quantity" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Sale type</label>
+                <select x-model="pastOrderForm.type" @change="updatePastOrderType()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="Regular">Regular</option>
+                    <option value="Loaned">Loaned</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Unit price</label>
+                <input type="number" min="0" step="0.01" x-model.number="pastOrderForm.unitPrice" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm font-semibold dark:border-slate-700 sm:col-span-2">
+                <input type="checkbox" x-model="pastOrderForm.paid" class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500">
+                Paid
+            </label>
+            <div x-show="pastOrderForm.paid">
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Paid date</label>
+                <input type="date" x-model="pastOrderForm.paidDate" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Payment tag</label>
+                <input type="text" list="payment-method-options" x-model="pastOrderForm.paymentMethod" placeholder="GCash, PayPal, GoTyme..." class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+        </div>
+
+        <div class="flex gap-3 px-5 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+            <button @click="closePastOrderModal()" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold transition-colors">
+                Cancel
+            </button>
+            <button @click="savePastOrder()" class="flex-1 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors">
+                Save Past Order
+            </button>
+        </div>
+    </div>
+
+    <datalist id="payment-method-options">
+        <option value="GCash"></option>
+        <option value="PayPal"></option>
+        <option value="GoTyme"></option>
+        <option value="Maya"></option>
+        <option value="Bank Transfer"></option>
+        <option value="Cash"></option>
+    </datalist>
 
     <!-- WEEKLY REPORT MODAL -->
     <div x-show="showReceiptModal" @click="showReceiptModal = false" class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40" style="display: none;" x-transition.opacity.duration.200ms></div>
@@ -1344,7 +1436,19 @@
                     quantity: 1,
                     type: 'Regular',
                     unitPrice: 250,
-                    paid: true
+                    paid: true,
+                    paymentMethod: ''
+                },
+                pastOrderForm: {
+                    open: false,
+                    customer: '',
+                    orderDate: '',
+                    paidDate: '',
+                    quantity: 1,
+                    type: 'Regular',
+                    unitPrice: 250,
+                    paid: true,
+                    paymentMethod: ''
                 },
                 syncForm: {
                     email: '',
@@ -2612,7 +2716,7 @@
                         summary.totalValue += total;
                         summary.history.push(sale);
 
-                        if (sale.type === 'Loaned' && !sale.paid) {
+                        if (this.isFinancialSale(sale) && sale.type === 'Loaned' && !sale.paid) {
                             summary.unpaidAmount += total;
                             summary.unpaidCount += 1;
                         }
@@ -2741,6 +2845,104 @@
                     return type === 'Loaned' ? this.config.loanPrice : this.config.regularPrice;
                 },
 
+                normalizePaymentMethod(method) {
+                    return String(method || '').trim().replace(/\s+/g, ' ');
+                },
+
+                getPastOrderFormDefaults(customerName = '') {
+                    const orderDate = this.formatDateForInput();
+                    return {
+                        open: false,
+                        customer: String(customerName || '').trim().replace(/\s+/g, ' '),
+                        orderDate,
+                        paidDate: orderDate,
+                        quantity: 1,
+                        type: 'Regular',
+                        unitPrice: this.getDefaultUnitPrice('Regular'),
+                        paid: true,
+                        paymentMethod: ''
+                    };
+                },
+
+                openPastOrderModal(customerName = '') {
+                    const selectedCustomer = this.getSelectedCustomerSummary();
+                    const name = customerName || (selectedCustomer ? selectedCustomer.name : '');
+                    this.pastOrderForm = {
+                        ...this.getPastOrderFormDefaults(name),
+                        open: true
+                    };
+
+                    if (typeof window !== 'undefined' && window.setTimeout) {
+                        window.setTimeout(() => this.renderIcons(), 0);
+                    } else {
+                        this.renderIcons();
+                    }
+                    return true;
+                },
+
+                closePastOrderModal() {
+                    this.pastOrderForm = this.getPastOrderFormDefaults();
+                },
+
+                updatePastOrderType() {
+                    this.pastOrderForm.unitPrice = this.getDefaultUnitPrice(this.pastOrderForm.type);
+                },
+
+                savePastOrder() {
+                    const rawCustomer = String(this.pastOrderForm.customer || '').trim().replace(/\s+/g, ' ');
+                    const customer = this.getCustomerDisplayName(rawCustomer);
+                    const quantity = Number(this.pastOrderForm.quantity);
+                    const type = this.pastOrderForm.type === 'Loaned' ? 'Loaned' : 'Regular';
+                    const unitPrice = Number(this.pastOrderForm.unitPrice);
+                    const orderDate = this.pastOrderForm.orderDate || this.formatDateForInput();
+                    const paid = Boolean(this.pastOrderForm.paid);
+                    const paidDate = paid ? (this.pastOrderForm.paidDate || orderDate) : '';
+
+                    if (!rawCustomer) {
+                        alert('Please enter a customer name.');
+                        return false;
+                    }
+                    if (!Number.isInteger(quantity) || quantity < 1) {
+                        alert('Trays sold must be a whole number above zero.');
+                        return false;
+                    }
+                    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+                        alert('Please enter a valid unit price.');
+                        return false;
+                    }
+
+                    const orderDateDisplay = this.formatDisplayDate(orderDate);
+                    const paidDateDisplay = paid ? this.formatDisplayDate(paidDate) : '';
+                    const paymentMethod = this.normalizePaymentMethod(this.pastOrderForm.paymentMethod);
+
+                    this.sales.unshift({
+                        id: `manual-history-${Date.now()}`,
+                        source: 'manual-history',
+                        date: orderDate,
+                        orderDate,
+                        dateDisplay: orderDateDisplay,
+                        orderDateDisplay,
+                        paidDate,
+                        paidDateDisplay,
+                        customer,
+                        quantity,
+                        type,
+                        unitPrice,
+                        paid,
+                        paymentMethod,
+                        historyOnly: true,
+                        affectsCash: false
+                    });
+
+                    this.selectedCustomerKey = this.getCustomerKey(customer);
+                    if (this.customerSearch && !customer.toLowerCase().includes(this.customerSearch.trim().toLowerCase())) {
+                        this.customerSearch = '';
+                    }
+                    this.persistState();
+                    this.closePastOrderModal();
+                    return true;
+                },
+
                 openCustomerOrderEdit(id) {
                     const sale = this.sales.find(record => record.id === id);
                     if (!sale) return false;
@@ -2757,7 +2959,8 @@
                         quantity: Number(sale.quantity || 1),
                         type,
                         unitPrice: Number(sale.unitPrice ?? this.getDefaultUnitPrice(type)),
-                        paid: Boolean(sale.paid)
+                        paid: Boolean(sale.paid),
+                        paymentMethod: this.normalizePaymentMethod(sale.paymentMethod)
                     };
 
                     if (typeof window !== 'undefined' && window.setTimeout) {
@@ -2777,7 +2980,8 @@
                         quantity: 1,
                         type: 'Regular',
                         unitPrice: 250,
-                        paid: true
+                        paid: true,
+                        paymentMethod: ''
                     };
                 },
 
@@ -2817,6 +3021,7 @@
                     sale.paid = paid;
                     sale.paidDate = paidDate;
                     sale.paidDateDisplay = paidDateDisplay;
+                    sale.paymentMethod = this.normalizePaymentMethod(this.customerOrderEditForm.paymentMethod);
 
                     this.persistState();
                     this.closeCustomerOrderEdit();
@@ -2840,7 +3045,7 @@
 
                 collectCustomerLoan(id) {
                     const sale = this.sales.find(s => s.id === id);
-                    if (!sale || sale.type !== 'Loaned' || sale.paid) return false;
+                    if (!sale || this.isHistoryOnlySale(sale) || sale.type !== 'Loaned' || sale.paid) return false;
                     this.collectLoan(id);
                     return true;
                 },
@@ -2909,20 +3114,24 @@
 
                 collectLoan(id) {
                     const targetSale = this.sales.find(s => s.id === id);
-                    if (targetSale) {
-                        const paidDate = this.formatDateForInput();
-                        targetSale.paid = true;
-                        targetSale.paidDate = paidDate;
-                        targetSale.paidDateDisplay = this.formatDisplayDate(paidDate);
-                        this.persistState();
-                    }
+                    if (!targetSale || this.isHistoryOnlySale(targetSale)) return false;
+                    const paidDate = this.formatDateForInput();
+                    targetSale.paid = true;
+                    targetSale.paidDate = paidDate;
+                    targetSale.paidDateDisplay = this.formatDisplayDate(paidDate);
+                    this.persistState();
+                    return true;
                 },
 
                 deleteSale(id) {
                     const sale = this.sales.find(s => s.id === id);
                     if (!sale) return;
-                    if (!confirm(`Remove sale for "${sale.customer}" (${sale.quantity} eggs)? This will restore the quantity back to stock.`)) return;
-                    this.inventory += sale.quantity;
+                    const isHistoryOnly = this.isHistoryOnlySale(sale);
+                    const message = isHistoryOnly
+                        ? `Remove history record for "${sale.customer}" (${sale.quantity} eggs)? Current stock will not change.`
+                        : `Remove sale for "${sale.customer}" (${sale.quantity} eggs)? This will restore the quantity back to stock.`;
+                    if (!confirm(message)) return;
+                    if (!isHistoryOnly) this.inventory += sale.quantity;
                     this.sales = this.sales.filter(s => s.id !== id);
                     this.persistState();
                 },

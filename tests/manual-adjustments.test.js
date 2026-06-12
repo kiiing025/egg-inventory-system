@@ -454,6 +454,112 @@ test('customer order history edit controls are rendered', () => {
     assert.match(html, /@click="openCustomerOrderEdit\(sale\.id\)"/);
 });
 
+test('past customer order can be added without changing financial or stock totals', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 44;
+    app.sales = [
+        { id: 30, customer: 'Ana', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-01', paidDate: '2026-06-01' },
+        { id: 31, customer: 'Ben', quantity: 1, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-06-01', paidDate: '' }
+    ];
+    app.expenses = [
+        { id: 32, category: 'Restocking Cost', amount: 100, date: '2026-06-01' }
+    ];
+
+    const beforeCash = app.getCashOnHand();
+    const beforeProfit = app.getNetProfit();
+    const beforeReceivable = app.getOutstandingLoans();
+    const beforeStock = app.inventory;
+
+    assert.equal(app.openPastOrderModal('Chanda'), true);
+    app.pastOrderForm.customer = 'Chanda';
+    app.pastOrderForm.orderDate = '2026-04-20';
+    app.pastOrderForm.paid = false;
+    app.pastOrderForm.paidDate = '';
+    app.pastOrderForm.quantity = 3;
+    app.pastOrderForm.type = 'Loaned';
+    app.pastOrderForm.unitPrice = 270;
+    app.pastOrderForm.paymentMethod = 'GCash';
+
+    assert.equal(app.savePastOrder(), true);
+
+    const pastOrder = app.sales[0];
+    assert.equal(pastOrder.customer, 'Chanda');
+    assert.equal(pastOrder.historyOnly, true);
+    assert.equal(pastOrder.affectsCash, false);
+    assert.equal(pastOrder.paymentMethod, 'GCash');
+    assert.equal(app.getCashOnHand(), beforeCash);
+    assert.equal(app.getNetProfit(), beforeProfit);
+    assert.equal(app.getOutstandingLoans(), beforeReceivable);
+    assert.equal(app.inventory, beforeStock);
+    assert.equal(app.getDailyClosingSummary('2026-04-20').salesRevenue, 0);
+
+    const chanda = app.getCustomerSummaries().find(customer => customer.key === 'chanda');
+    assert.equal(chanda.orderCount, 1);
+    assert.equal(chanda.unpaidAmount, 0);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.sales[0].historyOnly, true);
+    assert.equal(savedData.sales[0].affectsCash, false);
+    assert.equal(savedData.sales[0].paymentMethod, 'GCash');
+});
+
+test('customer order edit can update online payment tag', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.sales = [
+        {
+            id: 33,
+            customer: 'Chanda',
+            quantity: 1,
+            unitPrice: 250,
+            type: 'Regular',
+            paid: true,
+            orderDate: '2026-04-20',
+            paidDate: '2026-04-20',
+            historyOnly: true,
+            affectsCash: false
+        }
+    ];
+
+    assert.equal(app.openCustomerOrderEdit(33), true);
+    app.customerOrderEditForm.paymentMethod = 'GoTyme';
+
+    assert.equal(app.saveCustomerOrderEdit(), true);
+    assert.equal(app.sales[0].paymentMethod, 'GoTyme');
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.sales[0].paymentMethod, 'GoTyme');
+});
+
+test('deleting a history-only order does not change current stock', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 44;
+    app.sales = [
+        { id: 34, customer: 'Chanda', quantity: 3, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-04-20', paidDate: '', historyOnly: true, affectsCash: false },
+        { id: 35, customer: 'Ana', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-01', paidDate: '2026-06-01' }
+    ];
+
+    app.deleteSale(34);
+
+    assert.equal(app.inventory, 44);
+    assert.equal(app.sales.length, 1);
+    assert.equal(app.sales[0].customer, 'Ana');
+});
+
+test('past order controls and payment tags are rendered', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Add Past Order/);
+    assert.match(html, /pastOrderForm\.open/);
+    assert.match(html, /@click="openPastOrderModal/);
+    assert.match(html, /x-model="pastOrderForm\.paymentMethod"/);
+    assert.match(html, /x-model="customerOrderEditForm\.paymentMethod"/);
+    assert.match(html, /History Only/);
+    assert.match(html, /paymentMethod/);
+});
+
 test('dashboard includes a customer loan reminder shortcut', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 
