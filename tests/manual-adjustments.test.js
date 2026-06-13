@@ -1014,6 +1014,53 @@ test('successful push and pull update sync metadata', async () => {
     assert.equal(app.syncLastError, '');
 });
 
+test('cloud pull keeps historical April customer orders when cloud copy is older', async () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.requireSyncReady = () => true;
+    app.getSyncConfig = () => ({ tableName: 'egg_app_state', supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' });
+    app.syncUser = { id: 'user-1' };
+    app.syncClient = {
+        from() {
+            return {
+                select() {
+                    const query = {
+                        eq() {
+                            return query;
+                        },
+                        maybeSingle: async () => ({
+                            data: {
+                                data: {
+                                    inventory: 88,
+                                    sales: [
+                                        { id: 'cloud-sale-1', customer: 'June Buyer', orderDate: '2026-06-01', date: '2026-06-01', quantity: 1, type: 'Regular', unitPrice: 250, paid: true }
+                                    ],
+                                    expenses: [],
+                                    cashAdjustments: [],
+                                    stockAdjustments: [],
+                                    walletTransfers: [],
+                                    dailyClosings: [],
+                                    config: { regularPrice: 250, loanPrice: 270 }
+                                },
+                                updated_at: '2026-06-13T16:00:00.000Z'
+                            },
+                            error: null
+                        })
+                    };
+                    return query;
+                }
+            };
+        }
+    };
+
+    assert.equal(await app.pullSync(false), true);
+    assert.equal(app.sales.some(sale => sale.id === 'cloud-sale-1'), true);
+    assert.equal(app.sales.filter(sale => sale.source === 'historical-april-2026-sheet').length, 30);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.sales.filter(sale => sale.source === 'historical-april-2026-sheet').length, 30);
+});
+
 test('sync health is visible on dashboard and cloud sync page', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 

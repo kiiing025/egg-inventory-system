@@ -2738,6 +2738,7 @@
                             return false;
                         }
                         this.applyPersistedState(data.data);
+                        this.importHistoricalAprilSales();
                         this.persistState({ sync: false });
                         this.syncStatus = 'synced';
                         this.syncLastSyncedAt = data.updated_at ? new Date(data.updated_at).toLocaleString() : new Date().toLocaleString();
