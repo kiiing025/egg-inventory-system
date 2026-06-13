@@ -714,6 +714,19 @@ test('dashboard includes a customer loan reminder shortcut', () => {
     assert.match(html, /@click="currentPage = 'customers'"/);
 });
 
+test('dashboard renders mobile ledger summary and quick actions', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /data-dashboard-hero/);
+    assert.match(html, /data-dashboard-quick-actions/);
+    assert.match(html, /data-dashboard-wallets/);
+    assert.match(html, /@click="openAdjustmentModal\('cash'\)"/);
+    assert.match(html, /@click="openAdjustmentModal\('stock'\)"/);
+    assert.match(html, /@click="openReceiptModal\(\)"/);
+    assert.match(html, /@click="currentPage = 'closing'; dailyClosingForm\.date = formatDateForInput\(\)"/);
+    assert.match(html, /@click="currentPage = 'sync'"/);
+});
+
 test('daily closing page and dashboard shortcut are rendered', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 

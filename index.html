@@ -282,63 +282,95 @@
     <main class="max-w-7xl mx-auto lg:ml-64 p-4 pb-28 lg:p-6 lg:pb-6 space-y-6">
         <section x-show="currentPage === 'dashboard'" class="space-y-6">
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
-                <div class="flex items-start justify-between gap-2">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Cash on Hand</p>
-                    <button @click="openAdjustmentModal('cash')" class="px-2 py-1 rounded bg-emerald-50 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 transition-colors">
-                        Edit
-                    </button>
+        <div data-dashboard-hero class="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <div class="yolk-surface rounded-[1.75rem] p-5">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-[0.16em] text-[#d34036]">Today overview</p>
+                        <h2 class="mt-2 text-2xl font-black leading-tight text-[#1f2421] dark:text-white">Cash and stock at a glance</h2>
+                    </div>
+                    <img src="HEAD.png" alt="YOLK" class="h-14 w-14 object-contain">
                 </div>
-                <p class="text-xl md:text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400" x-text="formatPHP(getCashOnHand())"></p>
-                <span class="text-[10px] text-slate-400">Revenue - Expenses + Adjustments</span>
-            </div>
-            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
-                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Net Profit</p>
-                <p class="text-xl md:text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400" x-text="formatPHP(getNetProfit())"></p>
-                <span class="text-[10px] text-slate-400">Revenue - COGS</span>
-            </div>
-            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
-                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Accounts Receivable</p>
-                <p class="text-xl md:text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400" x-text="formatPHP(getOutstandingLoans())"></p>
-                <span class="text-[10px] text-slate-400">Unpaid Customer Loans</span>
-            </div>
-            <div class="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
-                <div class="flex items-start justify-between gap-2">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Stock</p>
-                    <button @click="openAdjustmentModal('stock')" class="px-2 py-1 rounded bg-purple-50 text-[10px] font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors">
-                        Edit
-                    </button>
+                <div class="mt-5 grid grid-cols-2 gap-3">
+                    <div class="rounded-3xl bg-[#1f2421] p-4 text-white">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Cash on Hand</p>
+                            <button @click="openAdjustmentModal('cash')" class="yolk-action rounded-full bg-white/12 px-3 py-1 text-[11px] font-black text-white hover:bg-white/20">Edit</button>
+                        </div>
+                        <p class="yolk-metric mt-3 text-2xl font-black" x-text="formatPHP(getCashOnHand())"></p>
+                        <p class="mt-1 text-[11px] font-semibold text-white/55">Cash only, after cash-outs</p>
+                    </div>
+                    <div class="rounded-3xl bg-[#fff4ee] p-4 text-[#1f2421] dark:bg-slate-800 dark:text-white">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-[#8a6358] dark:text-slate-400">Current Stock</p>
+                            <button @click="openAdjustmentModal('stock')" class="yolk-action rounded-full bg-[#d34036]/10 px-3 py-1 text-[11px] font-black text-[#d34036] hover:bg-[#d34036]/15">Edit</button>
+                        </div>
+                        <p class="yolk-metric mt-3 text-2xl font-black" x-text="inventory"></p>
+                        <p class="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">Available eggs</p>
+                    </div>
                 </div>
-                <p class="text-xl md:text-2xl font-bold mt-1 text-purple-600 dark:text-purple-400" x-text="inventory"></p>
-                <span class="text-[10px] text-slate-400">Available Eggs</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="yolk-surface rounded-[1.5rem] p-4">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Net Profit</p>
+                    <p class="yolk-metric mt-2 text-xl font-black text-emerald-600 dark:text-emerald-400" x-text="formatPHP(getNetProfit())"></p>
+                    <p class="mt-1 text-[11px] text-slate-500">Revenue minus COGS</p>
+                </div>
+                <div class="yolk-surface rounded-[1.5rem] p-4">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Receivable</p>
+                    <p class="yolk-metric mt-2 text-xl font-black text-amber-600 dark:text-amber-400" x-text="formatPHP(getOutstandingLoans())"></p>
+                    <p class="mt-1 text-[11px] text-slate-500">Unpaid balance</p>
+                </div>
             </div>
         </div>
 
-        <div x-show="getWalletBalanceRows().length > 0" class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div data-dashboard-wallets x-show="getWalletBalanceRows().length > 0" class="yolk-surface rounded-[1.75rem] p-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p class="text-sm font-black">Online Wallets</p>
-                    <p class="text-xs text-blue-700 dark:text-blue-200">Payments here are not counted as Cash on Hand until you cash out.</p>
+                    <p class="text-sm font-black text-[#1f2421] dark:text-white">Online Wallets</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Not Cash on Hand until you cash out.</p>
                 </div>
-                <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700">
+                <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" class="yolk-action inline-flex items-center justify-center gap-2 rounded-2xl bg-[#d34036] px-4 py-2 text-sm font-black text-white hover:bg-[#b8322b]">
                     <i data-lucide="wallet-cards" class="h-4 w-4"></i>
                     Cash Out
                 </button>
             </div>
             <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <template x-for="wallet in getWalletBalanceRows()" :key="wallet.account">
-                    <div class="rounded-xl border border-blue-200 bg-white/80 p-3 dark:border-blue-900/50 dark:bg-slate-900/40">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="text-xs font-black uppercase tracking-wider" x-text="wallet.account"></p>
-                            <button @click="openWalletTransferModal(wallet.account)" class="rounded-lg bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-200">
-                                Cash Out
-                            </button>
-                        </div>
-                        <p class="mt-2 text-lg font-black" x-text="formatPHP(wallet.amount)"></p>
+                    <div class="rounded-2xl bg-[#f6f3ee] p-3 dark:bg-white/5">
+                        <p class="text-xs font-black text-[#1f2421] dark:text-white" x-text="wallet.account"></p>
+                        <p class="yolk-metric mt-1 text-lg font-black text-[#d34036]" x-text="formatPHP(wallet.balance)"></p>
                     </div>
                 </template>
             </div>
+        </div>
+
+        <div data-dashboard-quick-actions class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <button @click="openReceiptModal()" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
+                <i data-lucide="receipt-text" class="h-5 w-5 text-[#d34036]"></i>
+                <span class="text-sm font-black">Weekly Report</span>
+            </button>
+            <button @click="currentPage = 'closing'; dailyClosingForm.date = formatDateForInput()" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
+                <i data-lucide="calendar-check" class="h-5 w-5 text-[#d34036]"></i>
+                <span class="text-sm font-black">Close Day</span>
+            </button>
+            <button @click="currentPage = 'sales'" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
+                <i data-lucide="shopping-bag" class="h-5 w-5 text-[#d34036]"></i>
+                <span class="text-sm font-black">Sales</span>
+            </button>
+            <button @click="currentPage = 'expenses'" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
+                <i data-lucide="receipt" class="h-5 w-5 text-[#d34036]"></i>
+                <span class="text-sm font-black">Expense</span>
+            </button>
+            <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
+                <i data-lucide="wallet-cards" class="h-5 w-5 text-[#d34036]"></i>
+                <span class="text-sm font-black">Cash Out</span>
+            </button>
+            <button @click="currentPage = 'sync'" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
+                <i data-lucide="cloud" class="h-5 w-5 text-[#d34036]"></i>
+                <span class="text-sm font-black">Sync</span>
+            </button>
         </div>
 
         <div x-show="getCustomersWithOpenLoans().length > 0" class="rounded-2xl border border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
