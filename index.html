@@ -125,24 +125,34 @@
             --yolk-muted: #6f756f;
             --yolk-line: #e6e0d8;
             --yolk-paper: #f6f3ee;
+            --ops-paper: #eef1ed;
+            --ops-panel: #fbfcf8;
+            --ops-line: #d7ded2;
+            --ops-ink: #20251f;
         }
 
         .yolk-app-bg {
             background:
-                radial-gradient(circle at top left, rgba(211, 64, 54, 0.08), transparent 32rem),
-                linear-gradient(180deg, #f8f5f0 0%, #f3f0ea 100%);
+                linear-gradient(rgba(32, 37, 31, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(32, 37, 31, 0.035) 1px, transparent 1px),
+                radial-gradient(circle at 14% 0%, rgba(211, 64, 54, 0.10), transparent 26rem),
+                linear-gradient(180deg, #f3f5ef 0%, var(--ops-paper) 100%);
+            background-size: 32px 32px, 32px 32px, auto, auto;
         }
 
         .dark .yolk-app-bg {
             background:
+                linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
                 radial-gradient(circle at top left, rgba(211, 64, 54, 0.16), transparent 30rem),
                 linear-gradient(180deg, #0f1412 0%, #111827 100%);
+            background-size: 32px 32px, 32px 32px, auto, auto;
         }
 
         .yolk-surface {
-            border: 1px solid rgba(148, 123, 102, 0.18);
-            background: rgba(255, 255, 255, 0.86);
-            box-shadow: 0 18px 50px rgba(79, 55, 39, 0.08);
+            border: 1px solid rgba(32, 37, 31, 0.10);
+            background: rgba(251, 252, 248, 0.9);
+            box-shadow: 0 16px 36px rgba(32, 37, 31, 0.07);
         }
 
         .dark .yolk-surface {
@@ -174,6 +184,39 @@
             border-color: rgba(255, 255, 255, 0.10);
             background: rgba(15, 23, 42, 0.9);
             box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+        }
+
+        .ops-panel {
+            border: 1px solid var(--ops-line);
+            background: rgba(251, 252, 248, 0.94);
+            box-shadow: 0 20px 45px rgba(32, 37, 31, 0.08);
+        }
+
+        .dark .ops-panel {
+            border-color: rgba(255, 255, 255, 0.11);
+            background: rgba(15, 23, 42, 0.92);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
+        }
+
+        .ops-kpi {
+            border: 1px solid rgba(32, 37, 31, 0.08);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 246, 241, 0.86));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        }
+
+        .dark .ops-kpi {
+            border-color: rgba(255, 255, 255, 0.10);
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.86), rgba(15, 23, 42, 0.86));
+        }
+
+        .ops-chip {
+            border: 1px solid rgba(32, 37, 31, 0.10);
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .dark .ops-chip {
+            border-color: rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.07);
         }
 
         button:focus-visible,
@@ -282,46 +325,61 @@
     <main class="max-w-7xl mx-auto lg:ml-64 p-4 pb-28 lg:p-6 lg:pb-6 space-y-6">
         <section x-show="currentPage === 'dashboard'" class="space-y-6">
 
-        <div data-dashboard-hero class="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <div class="yolk-surface rounded-[1.75rem] p-5">
-                <div class="flex items-start justify-between gap-4">
+        <div data-dashboard-hero data-ops-command-center class="ops-panel overflow-hidden rounded-[1.35rem]">
+            <div class="border-b border-[#d7ded2] bg-[#20251f] px-4 py-3 text-white dark:border-white/10">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-xs font-black uppercase tracking-[0.16em] text-[#d34036]">Today overview</p>
-                        <h2 class="mt-2 text-2xl font-black leading-tight text-[#1f2421] dark:text-white">Cash and stock at a glance</h2>
+                        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-white/55">Operations desk</p>
+                        <h2 class="mt-1 text-2xl font-black leading-tight tracking-normal">Today's command center</h2>
                     </div>
-                    <img src="HEAD.png" alt="YOLK" class="h-14 w-14 object-contain">
-                </div>
-                <div class="mt-5 grid grid-cols-2 gap-3">
-                    <div class="rounded-3xl bg-[#1f2421] p-4 text-white">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Cash on Hand</p>
-                            <button @click="openAdjustmentModal('cash')" class="yolk-action rounded-full bg-white/12 px-3 py-1 text-[11px] font-black text-white hover:bg-white/20">Edit</button>
-                        </div>
-                        <p class="yolk-metric mt-3 text-2xl font-black" x-text="formatPHP(getCashOnHand())"></p>
-                        <p class="mt-1 text-[11px] font-semibold text-white/55">Cash only, after cash-outs</p>
-                    </div>
-                    <div class="rounded-3xl bg-[#fff4ee] p-4 text-[#1f2421] dark:bg-slate-800 dark:text-white">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-[#8a6358] dark:text-slate-400">Current Stock</p>
-                            <button @click="openAdjustmentModal('stock')" class="yolk-action rounded-full bg-[#d34036]/10 px-3 py-1 text-[11px] font-black text-[#d34036] hover:bg-[#d34036]/15">Edit</button>
-                        </div>
-                        <p class="yolk-metric mt-3 text-2xl font-black" x-text="inventory"></p>
-                        <p class="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">Available eggs</p>
+                    <div class="flex items-center gap-2 text-xs font-bold text-white/70">
+                        <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                        <span x-text="syncHealthLabel()"></span>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <div class="yolk-surface rounded-[1.5rem] p-4">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Net Profit</p>
-                    <p class="yolk-metric mt-2 text-xl font-black text-emerald-600 dark:text-emerald-400" x-text="formatPHP(getNetProfit())"></p>
-                    <p class="mt-1 text-[11px] text-slate-500">Revenue minus COGS</p>
+            <div class="grid gap-4 p-4 xl:grid-cols-[1fr_320px]">
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="ops-kpi rounded-2xl p-4 sm:col-span-2">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Cash on hand</p>
+                            <button @click="openAdjustmentModal('cash')" class="yolk-action rounded-xl bg-[#20251f] px-3 py-1.5 text-[11px] font-black text-white hover:bg-[#343b33] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">Edit</button>
+                        </div>
+                        <p class="yolk-metric mt-3 text-4xl font-black leading-none text-[#20251f] dark:text-white" x-text="formatPHP(getCashOnHand())"></p>
+                        <p class="mt-2 text-xs font-semibold text-slate-500">Cash drawer only. Online wallets stay separate until cash-out.</p>
+                    </div>
+
+                    <div class="ops-kpi rounded-2xl p-4">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Current stock</p>
+                            <button @click="openAdjustmentModal('stock')" class="yolk-action rounded-xl bg-[#d34036]/10 px-3 py-1.5 text-[11px] font-black text-[#d34036] hover:bg-[#d34036]/15">Edit</button>
+                        </div>
+                        <p class="yolk-metric mt-3 text-3xl font-black text-[#20251f] dark:text-white" x-text="inventory"></p>
+                        <p class="mt-2 text-xs text-slate-500">eggs available</p>
+                    </div>
+
+                    <div class="ops-kpi rounded-2xl p-4">
+                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Net profit</p>
+                        <p class="yolk-metric mt-3 text-3xl font-black text-emerald-600 dark:text-emerald-400" x-text="formatPHP(getNetProfit())"></p>
+                        <p class="mt-2 text-xs text-slate-500">revenue minus COGS</p>
+                    </div>
                 </div>
-                <div class="yolk-surface rounded-[1.5rem] p-4">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Receivable</p>
-                    <p class="yolk-metric mt-2 text-xl font-black text-amber-600 dark:text-amber-400" x-text="formatPHP(getOutstandingLoans())"></p>
-                    <p class="mt-1 text-[11px] text-slate-500">Unpaid balance</p>
-                </div>
+
+                <aside data-ops-priority-rail class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                    <button @click="currentPage = 'customers'" class="ops-chip yolk-action rounded-2xl p-3 text-left">
+                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Receivable</p>
+                        <p class="yolk-metric mt-1 text-xl font-black text-amber-600 dark:text-amber-300" x-text="formatPHP(getOutstandingLoans())"></p>
+                    </button>
+                    <button @click="currentPage = 'closing'; dailyClosingForm.date = formatDateForInput()" class="ops-chip yolk-action rounded-2xl p-3 text-left">
+                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Daily close</p>
+                        <p class="mt-1 text-sm font-black text-[#20251f] dark:text-white" x-text="getTodayClosing() ? 'Closed today' : 'Needs review'"></p>
+                    </button>
+                    <button @click="currentPage = 'sync'" class="ops-chip yolk-action rounded-2xl p-3 text-left">
+                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Cloud sync</p>
+                        <p class="mt-1 text-sm font-black text-[#20251f] dark:text-white" x-text="syncHealthDetail()"></p>
+                    </button>
+                </aside>
             </div>
         </div>
 
@@ -373,63 +431,74 @@
             </button>
         </div>
 
-        <div x-show="getCustomersWithOpenLoans().length > 0" class="rounded-2xl border border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <p class="text-sm font-black">Loan Follow-up</p>
-                <p class="text-xs text-amber-700 dark:text-amber-200">
-                    <span x-text="getCustomersWithOpenLoans().length"></span>
-                    <span x-text="getCustomersWithOpenLoans().length === 1 ? ' customer has ' : ' customers have '"></span>
-                    unpaid balances totaling
-                    <span class="font-bold" x-text="formatPHP(getOutstandingLoans())"></span>.
-                </p>
-            </div>
-            <button @click="currentPage = 'customers'" class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 transition-colors">
-                <i data-lucide="users" class="h-4 w-4"></i>
-                View Customers
-            </button>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <p class="text-sm font-black">Daily Closing</p>
-                <p class="text-xs text-slate-500 dark:text-slate-400">
-                    <template x-if="getTodayClosing()">
-                        <span>
-                            Today is closed:
-                            <span class="font-bold" x-text="formatPHP(getTodayClosing().cashOnHand)"></span>
-                            cash and
-                            <span class="font-bold" x-text="getTodayClosing().stockOnHand + ' eggs'"></span>.
-                        </span>
-                    </template>
-                    <template x-if="!getTodayClosing()">
-                        <span>Review today's sales, expenses, cash, loans, and stock.</span>
-                    </template>
-                </p>
-            </div>
-            <button @click="currentPage = 'closing'; dailyClosingForm.date = formatDateForInput()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 transition-colors">
-                <i data-lucide="calendar-check" class="h-4 w-4"></i>
-                Close Day
-            </button>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <div class="flex items-center gap-2">
-                    <p class="text-sm font-black">Sync Health</p>
-                    <span class="rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider" :class="syncHealthClass()" x-text="syncHealthLabel()"></span>
+        <div data-ops-work-queue class="ops-panel rounded-[1.35rem] p-4">
+            <div class="flex flex-col gap-2 border-b border-[#d7ded2] pb-3 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.18em] text-[#d34036]">Today's work queue</p>
+                    <h3 class="mt-1 text-lg font-black text-[#20251f] dark:text-white">Handle the items that affect money first.</h3>
                 </div>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400" x-text="syncHealthDetail()"></p>
+                <span class="ops-chip rounded-xl px-3 py-1.5 text-xs font-black" :class="syncHealthClass()" x-text="syncHealthLabel()"></span>
             </div>
-            <button @click="currentPage = 'sync'" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
-                <i data-lucide="cloud" class="h-4 w-4"></i>
-                Open Sync
-            </button>
+
+            <div class="mt-4 grid gap-3 lg:grid-cols-3">
+                <article class="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-black">Loan Follow-up</p>
+                            <p class="mt-1 text-xs text-amber-700 dark:text-amber-200">
+                                <span x-text="getCustomersWithOpenLoans().length"></span>
+                                <span x-text="getCustomersWithOpenLoans().length === 1 ? ' customer has ' : ' customers have '"></span>
+                                unpaid balances totaling
+                                <span class="font-bold" x-text="formatPHP(getOutstandingLoans())"></span>.
+                            </p>
+                        </div>
+                        <i data-lucide="badge-alert" class="h-5 w-5 shrink-0"></i>
+                    </div>
+                    <button @click="currentPage = 'customers'" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 transition-colors">
+                        <i data-lucide="users" class="h-4 w-4"></i>
+                        View Customers
+                    </button>
+                </article>
+
+                <article class="rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-white/5">
+                    <p class="text-sm font-black">Daily Closing</p>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        <template x-if="getTodayClosing()">
+                            <span>
+                                Today is closed:
+                                <span class="font-bold" x-text="formatPHP(getTodayClosing().cashOnHand)"></span>
+                                cash and
+                                <span class="font-bold" x-text="getTodayClosing().stockOnHand + ' eggs'"></span>.
+                            </span>
+                        </template>
+                        <template x-if="!getTodayClosing()">
+                            <span>Review today's sales, expenses, cash, loans, and stock.</span>
+                        </template>
+                    </p>
+                    <button @click="currentPage = 'closing'; dailyClosingForm.date = formatDateForInput()" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#20251f] px-4 py-2 text-sm font-bold text-white hover:bg-[#343b33] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 transition-colors">
+                        <i data-lucide="calendar-check" class="h-4 w-4"></i>
+                        Close Day
+                    </button>
+                </article>
+
+                <article class="rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-white/5">
+                    <div class="flex items-center gap-2">
+                        <p class="text-sm font-black">Sync Health</p>
+                        <span class="rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider" :class="syncHealthClass()" x-text="syncHealthLabel()"></span>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400" x-text="syncHealthDetail()"></p>
+                    <button @click="currentPage = 'sync'" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
+                        <i data-lucide="cloud" class="h-4 w-4"></i>
+                        Open Sync
+                    </button>
+                </article>
+            </div>
         </div>
 
-        <div class="grid md:grid-cols-3 gap-6">
+        <div data-ops-entry-grid class="grid gap-4 md:grid-cols-3">
 
             <!-- SALES FORM -->
-            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
+            <div class="ops-panel flex h-full flex-col rounded-[1.35rem] p-5">
                 <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
                     <span>📦</span>
                     <span>Record Sale</span>
@@ -462,7 +531,7 @@
             </div>
 
             <!-- RESTOCK FORM -->
-            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
+            <div class="ops-panel flex h-full flex-col rounded-[1.35rem] p-5">
                 <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
                     <span>🛒</span>
                     <span>Restock</span>
@@ -485,7 +554,7 @@
             </div>
 
             <!-- EXPENSE FORM -->
-            <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
+            <div class="ops-panel flex h-full flex-col rounded-[1.35rem] p-5">
                 <h2 class="text-lg font-bold mb-4 flex items-center space-x-2">
                     <span>💳</span>
                     <span>Record Expense</span>

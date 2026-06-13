@@ -856,6 +856,19 @@ test('mobile ledger redesign shell includes shared visual foundation', () => {
     assert.match(html, /getPageEyebrow\(\)/);
 });
 
+test('operations desk redesign adds command center and work queues', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /data-ops-command-center/);
+    assert.match(html, /data-ops-priority-rail/);
+    assert.match(html, /data-ops-work-queue/);
+    assert.match(html, /data-ops-entry-grid/);
+    assert.match(html, /\.ops-panel/);
+    assert.match(html, /\.ops-kpi/);
+    assert.match(html, /Operations desk/);
+    assert.match(html, /Today\'s work queue/);
+});
+
 test('app shows a jumping HEAD loading screen on startup', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
     const app = loadEggApp(createStorage());
