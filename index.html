@@ -117,10 +117,76 @@
                 animation: none;
             }
         }
+
+        :root {
+            --yolk-red: #d34036;
+            --yolk-red-dark: #b8322b;
+            --yolk-ink: #1f2421;
+            --yolk-muted: #6f756f;
+            --yolk-line: #e6e0d8;
+            --yolk-paper: #f6f3ee;
+        }
+
+        .yolk-app-bg {
+            background:
+                radial-gradient(circle at top left, rgba(211, 64, 54, 0.08), transparent 32rem),
+                linear-gradient(180deg, #f8f5f0 0%, #f3f0ea 100%);
+        }
+
+        .dark .yolk-app-bg {
+            background:
+                radial-gradient(circle at top left, rgba(211, 64, 54, 0.16), transparent 30rem),
+                linear-gradient(180deg, #0f1412 0%, #111827 100%);
+        }
+
+        .yolk-surface {
+            border: 1px solid rgba(148, 123, 102, 0.18);
+            background: rgba(255, 255, 255, 0.86);
+            box-shadow: 0 18px 50px rgba(79, 55, 39, 0.08);
+        }
+
+        .dark .yolk-surface {
+            border-color: rgba(255, 255, 255, 0.10);
+            background: rgba(15, 23, 42, 0.88);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+        }
+
+        .yolk-metric {
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0;
+        }
+
+        .yolk-action {
+            transition: transform 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+        }
+
+        .yolk-action:active {
+            transform: scale(0.98);
+        }
+
+        .yolk-ledger-card {
+            border: 1px solid rgba(148, 123, 102, 0.18);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 12px 34px rgba(79, 55, 39, 0.07);
+        }
+
+        .dark .yolk-ledger-card {
+            border-color: rgba(255, 255, 255, 0.10);
+            background: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+        }
+
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {
+            outline: 2px solid var(--yolk-red);
+            outline-offset: 2px;
+        }
     </style>
 </head>
 
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
+<body data-yolk-shell class="yolk-app-bg min-h-screen font-sans text-[#1f2421] antialiased transition-colors duration-200 dark:text-slate-100">
 
     <div id="app-loading-screen" x-show="isLoading" x-transition.opacity.duration.300ms :class="{ 'loading-screen-exit': isLoadingExit }" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50 dark:bg-slate-950 overflow-hidden">
         <div class="flex flex-col items-center gap-5 px-6 text-center">
@@ -158,25 +224,29 @@
         </div>
     </div>
 
-    <nav class="sticky top-0 z-50 lg:ml-64 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-white/10 shadow-xs px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <img src="YOLK..png" class="h-12 w-12 dark:invert">
-        </div>
-        <div class="flex items-center space-x-2">
-            <button @click="openReceiptModal()" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors text-sm">
-                🧾 Weekly Report
-            </button>
-            <button x-show="pinLockEnabled" @click="lockApp()" aria-label="Lock app" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-slate-100 transition-colors">
-                <i data-lucide="lock-keyhole" class="h-5 w-5"></i>
-            </button>
-            <button @click="toggleTheme()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-slate-100 transition-colors">
-                <span x-show="!darkMode">🌙</span>
-                <span x-show="darkMode">☀️</span>
-            </button>
+    <nav class="sticky top-0 z-50 border-b border-[#e6e0d8]/80 bg-[#f8f5f0]/90 px-4 py-3 backdrop-blur-xl lg:ml-64 dark:border-white/10 dark:bg-slate-950/85">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#d34036]" x-text="getPageEyebrow()"></p>
+                <h1 class="truncate text-xl font-black leading-tight text-[#1f2421] dark:text-white" x-text="getPageTitle()"></h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="openReceiptModal()" class="yolk-action inline-flex items-center justify-center gap-2 rounded-2xl bg-[#d34036] px-3 py-2 text-xs font-black text-white shadow-lg shadow-[#d34036]/20 hover:bg-[#b8322b] sm:text-sm">
+                    <i data-lucide="receipt-text" class="h-4 w-4"></i>
+                    <span class="hidden sm:inline">Weekly Report</span>
+                </button>
+                <button x-show="pinLockEnabled" @click="lockApp()" aria-label="Lock app" class="yolk-action inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e6e0d8] bg-white/80 text-[#1f2421] hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15">
+                    <i data-lucide="lock-keyhole" class="h-5 w-5"></i>
+                </button>
+                <button @click="toggleTheme()" aria-label="Toggle dark mode" class="yolk-action inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e6e0d8] bg-white/80 text-[#1f2421] hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15">
+                    <i x-show="!darkMode" data-lucide="moon" class="h-5 w-5"></i>
+                    <i x-show="darkMode" data-lucide="sun" class="h-5 w-5"></i>
+                </button>
+            </div>
         </div>
     </nav>
 
-    <aside class="hidden lg:block fixed inset-y-0 left-0 w-64 border-r border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 px-4 py-5">
+    <aside class="hidden lg:block fixed inset-y-0 left-0 w-64 border-r border-[#e6e0d8] bg-[#fbfaf7] px-4 py-5 dark:border-white/10 dark:bg-slate-950">
         <div class="flex items-center gap-3">
             <img src="YOLK..png" class="h-12 w-12 dark:invert">
             <div>
@@ -2591,8 +2661,8 @@
 
                 navButtonClass(page) {
                     return this.currentPage === page ?
-                        'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm' :
-                        'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white';
+                        'bg-[#1f2421] text-white shadow-sm dark:bg-white dark:text-slate-950' :
+                        'text-slate-600 hover:bg-[#eee8df] hover:text-[#1f2421] dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white';
                 },
 
                 mobileNavButtonClass(page) {

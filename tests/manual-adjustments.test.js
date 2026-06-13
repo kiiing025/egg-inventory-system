@@ -807,9 +807,22 @@ test('app shell defaults to light mode and keeps dark mode opt-in', () => {
     app.init();
 
     assert.equal(app.darkMode, false);
-    assert.match(html, /<body class="bg-slate-50 text-slate-900[^"]*dark:bg-slate-950/);
+    assert.match(html, /<body data-yolk-shell class="yolk-app-bg[^"]*dark:text-slate-100/);
     assert.doesNotMatch(html, /<body class="bg-slate-950 text-slate-100/);
-    assert.match(html, /<aside class="[^"]*bg-white[^"]*dark:bg-slate-950/);
+    assert.match(html, /<aside class="[^"]*bg-\[#fbfaf7\][^"]*dark:bg-slate-950/);
+});
+
+test('mobile ledger redesign shell includes shared visual foundation', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /data-yolk-shell/);
+    assert.match(html, /\.yolk-surface/);
+    assert.match(html, /\.yolk-metric/);
+    assert.match(html, /\.yolk-action/);
+    assert.match(html, /\.yolk-ledger-card/);
+    assert.match(html, /font-variant-numeric:\s*tabular-nums/);
+    assert.match(html, /getPageTitle\(\)/);
+    assert.match(html, /getPageEyebrow\(\)/);
 });
 
 test('app shows a jumping HEAD loading screen on startup', () => {
