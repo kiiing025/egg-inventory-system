@@ -493,6 +493,63 @@ test('mobile ledger cards render sales customer and expense rows', () => {
     assert.match(html, /openPaymentModal\(sale\.id\)/);
 });
 
+test('sales ledger filters, searches, groups, and limits long sale lists', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 1, customer: 'Ana Cash', orderDate: '2026-06-12', date: '2026-06-12', quantity: 1, type: 'Regular', unitPrice: 250, paid: true, paymentMethod: 'Cash', payments: [{ amount: 250, account: 'Cash', date: '2026-06-12' }] },
+        { id: 2, customer: 'Ben Loan', orderDate: '2026-06-13', date: '2026-06-13', quantity: 1, type: 'Loaned', unitPrice: 270, paid: false, payments: [] },
+        { id: 3, customer: 'Cara Wallet', orderDate: '2026-06-11', date: '2026-06-11', quantity: 2, type: 'Loaned', unitPrice: 270, paid: false, paymentMethod: 'GCash', payments: [{ amount: 100, account: 'GCash', date: '2026-06-12' }] },
+        { id: 'historical-april-2026-99', customer: 'April Buyer', orderDate: '2026-04-20', date: '2026-04-20', quantity: 1, type: 'Regular', unitPrice: 250, paid: true, historyOnly: true, affectsCash: false, source: 'historical-april-2026-sheet' }
+    ];
+
+    assert.deepEqual(app.getFilteredSalesLedger().slice(0, 2).map(sale => sale.id), [2, 3]);
+
+    app.salesLedgerSearch = 'cara';
+    assert.deepEqual(app.getFilteredSalesLedger().map(sale => sale.id), [3]);
+
+    app.salesLedgerSearch = '';
+    app.setSalesLedgerFilter('unpaid');
+    assert.deepEqual(app.getFilteredSalesLedger().map(sale => sale.id), [2]);
+
+    app.setSalesLedgerFilter('partial');
+    assert.deepEqual(app.getFilteredSalesLedger().map(sale => sale.id), [3]);
+
+    app.setSalesLedgerFilter('online');
+    assert.deepEqual(app.getFilteredSalesLedger().map(sale => sale.id), [3]);
+
+    app.setSalesLedgerFilter('cash');
+    assert.deepEqual(app.getFilteredSalesLedger().map(sale => sale.id), [1]);
+
+    app.setSalesLedgerFilter('history');
+    assert.deepEqual(app.getFilteredSalesLedger().map(sale => sale.id), ['historical-april-2026-99']);
+
+    app.setSalesLedgerFilter('all');
+    app.salesLedgerVisibleCount = 2;
+    assert.equal(app.getSalesLedgerVisibleSales().length, 2);
+    assert.equal(app.getSalesLedgerHiddenCount(), 2);
+
+    app.salesLedgerVisibleCount = 30;
+    const groups = app.getSalesLedgerGroups();
+    assert.equal(groups.some(group => group.key === 'attention'), true);
+    assert.equal(groups.some(group => group.key === 'history'), true);
+    assert.equal(app.isSalesLedgerGroupOpen('history'), false);
+    app.toggleSalesLedgerGroup('history');
+    assert.equal(app.isSalesLedgerGroupOpen('history'), true);
+});
+
+test('sales ledger renders search filters grouped rows and show more controls', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /data-sales-ledger-search/);
+    assert.match(html, /data-sales-ledger-filters/);
+    assert.match(html, /data-sales-ledger-group/);
+    assert.match(html, /getSalesLedgerGroups\(\)/);
+    assert.match(html, /getSalesLedgerVisibleSales\(\)/);
+    assert.match(html, /setSalesLedgerFilter\(filter\.value\)/);
+    assert.match(html, /showMoreSalesLedger\(\)/);
+    assert.match(html, /Show more/);
+});
+
 test('past customer order can be added without changing financial or stock totals', () => {
     const storage = createStorage();
     const app = loadEggApp(storage);
