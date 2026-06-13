@@ -560,6 +560,126 @@ test('past order controls and payment tags are rendered', () => {
     assert.match(html, /paymentMethod/);
 });
 
+test('partial online payment reduces receivable without changing cash on hand', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 100;
+    app.sales = [
+        { id: 40, customer: 'Chanda', quantity: 3, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-06-10', paidDate: '' }
+    ];
+
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getOutstandingLoans(), 810);
+    assert.equal(app.openPaymentModal(40), true);
+    app.paymentForm.amount = 400;
+    app.paymentForm.account = 'GCash';
+    app.paymentForm.date = '2026-06-12';
+
+    assert.equal(app.savePayment(), true);
+
+    const sale = app.sales[0];
+    assert.equal(sale.paid, false);
+    assert.equal(sale.paidDate, '');
+    assert.equal(sale.payments.length, 1);
+    assert.equal(sale.payments[0].amount, 400);
+    assert.equal(sale.payments[0].account, 'GCash');
+    assert.equal(app.getSalePaymentTotal(sale), 400);
+    assert.equal(app.getSaleBalance(sale), 410);
+    assert.equal(app.getSaleStatus(sale), 'Partially Paid');
+    assert.equal(app.getOutstandingLoans(), 410);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getWalletBalances().GCash, 400);
+    assert.equal(app.inventory, 100);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.sales[0].payments[0].account, 'GCash');
+});
+
+test('cash out moves wallet balance into cash on hand', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.sales = [
+        {
+            id: 41,
+            customer: 'Chanda',
+            quantity: 2,
+            unitPrice: 270,
+            type: 'Loaned',
+            paid: false,
+            orderDate: '2026-06-10',
+            paidDate: '',
+            payments: [{ id: 1, date: '2026-06-12', amount: 400, account: 'GCash', note: '' }]
+        }
+    ];
+
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getWalletBalances().GCash, 400);
+    assert.equal(app.openWalletTransferModal('GCash'), true);
+    app.walletTransferForm.amount = 250;
+    app.walletTransferForm.date = '2026-06-12';
+
+    assert.equal(app.saveWalletTransfer(), true);
+    assert.equal(app.getCashOnHand(), 250);
+    assert.equal(app.getWalletBalances().GCash, 150);
+    assert.equal(app.walletTransfers.length, 1);
+    assert.equal(app.walletTransfers[0].account, 'GCash');
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.walletTransfers[0].amount, 250);
+});
+
+test('cash payment adds to cash and completes loan when balance is paid', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.sales = [
+        { id: 42, customer: 'Chanda', quantity: 3, unitPrice: 270, type: 'Loaned', paid: false, orderDate: '2026-06-10', paidDate: '' }
+    ];
+
+    assert.equal(app.openPaymentModal(42), true);
+    app.paymentForm.amount = 810;
+    app.paymentForm.account = 'Cash';
+    app.paymentForm.date = '2026-06-12';
+
+    assert.equal(app.savePayment(), true);
+    assert.equal(app.sales[0].paid, true);
+    assert.equal(app.sales[0].paidDate, '2026-06-12');
+    assert.equal(app.getOutstandingLoans(), 0);
+    assert.equal(app.getCashOnHand(), 810);
+});
+
+test('regular sale paid online goes to wallet instead of cash on hand', () => {
+    const app = loadEggApp();
+    app.inventory = 10;
+    app.saleForm.customer = 'Online Buyer';
+    app.saleForm.quantity = 1;
+    app.saleForm.type = 'Regular';
+    app.saleForm.unitPrice = 250;
+    app.saleForm.orderDate = '2026-06-12';
+    app.saleForm.paymentAccount = 'GCash';
+
+    app.submitSale();
+
+    assert.equal(app.inventory, 9);
+    assert.equal(app.sales[0].paid, true);
+    assert.equal(app.sales[0].payments[0].account, 'GCash');
+    assert.equal(app.getOutstandingLoans(), 0);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getWalletBalances().GCash, 250);
+});
+
+test('partial payment and wallet controls are rendered', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Add Payment/);
+    assert.match(html, /paymentForm\.open/);
+    assert.match(html, /x-model(?:\.number)?="paymentForm\.amount"/);
+    assert.match(html, /x-model="paymentForm\.account"/);
+    assert.match(html, /Cash Out/);
+    assert.match(html, /walletTransferForm\.open/);
+    assert.match(html, /x-model="saleForm\.paymentAccount"/);
+    assert.match(html, /getWalletBalances/);
+});
+
 test('dashboard includes a customer loan reminder shortcut', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 

@@ -245,6 +245,32 @@
             </div>
         </div>
 
+        <div x-show="getWalletBalanceRows().length > 0" class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm font-black">Online Wallets</p>
+                    <p class="text-xs text-blue-700 dark:text-blue-200">Payments here are not counted as Cash on Hand until you cash out.</p>
+                </div>
+                <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700">
+                    <i data-lucide="wallet-cards" class="h-4 w-4"></i>
+                    Cash Out
+                </button>
+            </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <template x-for="wallet in getWalletBalanceRows()" :key="wallet.account">
+                    <div class="rounded-xl border border-blue-200 bg-white/80 p-3 dark:border-blue-900/50 dark:bg-slate-900/40">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-xs font-black uppercase tracking-wider" x-text="wallet.account"></p>
+                            <button @click="openWalletTransferModal(wallet.account)" class="rounded-lg bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-200">
+                                Cash Out
+                            </button>
+                        </div>
+                        <p class="mt-2 text-lg font-black" x-text="formatPHP(wallet.amount)"></p>
+                    </div>
+                </template>
+            </div>
+        </div>
+
         <div x-show="getCustomersWithOpenLoans().length > 0" class="rounded-2xl border border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-sm font-black">Loan Follow-up</p>
@@ -313,6 +339,11 @@
                         <select x-model="saleForm.type" @change="updateSalePrice()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
                             <option>Regular</option>
                             <option>Loaned</option>
+                        </select>
+                        <select x-show="saleForm.type === 'Regular'" x-model="saleForm.paymentAccount" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <template x-for="account in getPaymentAccounts()" :key="account">
+                                <option :value="account" x-text="account"></option>
+                            </template>
                         </select>
                         <input type="number" placeholder="Quantity" x-model.number="saleForm.quantity" min="1" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
                     </div>
@@ -515,8 +546,7 @@
                                                     <span :class="sale.type === 'Loaned' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'" class="rounded-full px-2 py-0.5 text-[10px] font-bold" x-text="sale.type"></span>
                                                     <span x-show="isHistoryOnlySale(sale)" class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">History Only</span>
                                                     <span x-show="sale.paymentMethod" class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" x-text="sale.paymentMethod"></span>
-                                                    <span x-show="sale.paid" class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">PAID</span>
-                                                    <span x-show="!sale.paid" class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">UNPAID</span>
+                                                    <span :class="getSaleStatus(sale) === 'Paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : getSaleStatus(sale) === 'Partially Paid' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'" class="rounded-full px-2 py-0.5 text-[10px] font-bold" x-text="getSaleStatus(sale)"></span>
                                                 </div>
                                                 <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                                     <span x-text="sale.quantity"></span> eggs ordered
@@ -526,11 +556,22 @@
                                                         <span x-text="sale.paidDateDisplay || formatDisplayDate(sale.paidDate || sale.orderDate || sale.date)"></span>
                                                     </span>
                                                 </p>
+                                                <p x-show="isFinancialSale(sale)" class="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                                    Paid <span x-text="formatPHP(getSalePaymentTotal(sale))"></span>
+                                                    <span class="text-slate-400">/</span>
+                                                    <span x-text="formatPHP(getSaleTotal(sale))"></span>
+                                                    <span x-show="getSaleBalance(sale) > 0" class="text-amber-600 dark:text-amber-300">
+                                                        - balance <span x-text="formatPHP(getSaleBalance(sale))"></span>
+                                                    </span>
+                                                </p>
                                             </div>
                                             <div class="flex flex-wrap gap-2 sm:justify-end">
                                                 <button @click="openCustomerOrderEdit(sale.id)" class="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
                                                     <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
                                                     Edit Order
+                                                </button>
+                                                <button x-show="isFinancialSale(sale) && getSaleBalance(sale) > 0" @click="openPaymentModal(sale.id)" class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700">
+                                                    Add Payment
                                                 </button>
                                                 <button x-show="!isHistoryOnlySale(sale) && sale.type === 'Loaned' && !sale.paid" @click="collectCustomerLoan(sale.id)" class="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition-colors">
                                                     Mark Paid
@@ -773,13 +814,16 @@
                                     <td class="py-2 text-center" x-text="sale.quantity"></td>
                                     <td class="py-2 text-right font-semibold" x-text="formatPHP(sale.quantity * sale.unitPrice)"></td>
                                     <td class="py-2 text-center">
-                                        <span x-show="!sale.paid" class="text-amber-500 font-bold text-[10px]">UNPAID</span>
+                                        <span :class="getSaleStatus(sale) === 'Paid' ? 'text-emerald-500' : getSaleStatus(sale) === 'Partially Paid' ? 'text-blue-500' : 'text-amber-500'" class="font-bold text-[10px]" x-text="getSaleStatus(sale).toUpperCase()"></span>
+                                        <div x-show="isFinancialSale(sale) && getSaleBalance(sale) > 0" class="text-[10px] text-slate-400" x-text="'Bal ' + formatPHP(getSaleBalance(sale))"></div>
                                         <button x-show="!isHistoryOnlySale(sale) && sale.type === 'Loaned' && !sale.paid" @click="collectLoan(sale.id)" class="text-emerald-500 hover:text-emerald-600 font-bold text-[10px] underline">
                                             COLLECT
                                         </button>
-                                        <span x-show="sale.paid" class="text-emerald-500 font-bold text-[10px]">PAID</span>
                                     </td>
                                     <td class="py-2 text-center">
+                                        <button x-show="isFinancialSale(sale) && getSaleBalance(sale) > 0" @click="openPaymentModal(sale.id)" class="mr-1 rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300">
+                                            Add Payment
+                                        </button>
                                         <button @click="deleteSale(sale.id)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/60 transition-colors">
                                             ✕ Remove
                                         </button>
@@ -1173,6 +1217,97 @@
         </div>
     </div>
 
+    <!-- PAYMENT MODAL -->
+    <div x-show="paymentForm.open" @click="closePaymentModal()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
+
+    <div x-show="paymentForm.open" class="fixed inset-x-4 top-20 mx-auto max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-2xl z-50 border border-slate-200 dark:border-slate-700 overflow-hidden" style="display: none;" x-transition>
+        <div class="px-5 py-4 border-b border-slate-200 bg-blue-50 dark:border-slate-700 dark:bg-blue-950/20">
+            <h2 class="text-lg font-bold">Add Payment</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Online payments reduce the customer balance, but do not enter Cash on Hand until cash-out.
+            </p>
+        </div>
+
+        <div class="p-5 grid gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Amount paid</label>
+                <input type="number" min="0.01" step="0.01" x-model.number="paymentForm.amount" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Payment account</label>
+                <select x-model="paymentForm.account" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <template x-for="account in getPaymentAccounts()" :key="account">
+                        <option :value="account" x-text="account"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Paid date</label>
+                <input type="date" x-model="paymentForm.date" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Note</label>
+                <input type="text" x-model="paymentForm.note" placeholder="Reference number or note" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <div class="flex gap-3 px-5 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+            <button @click="closePaymentModal()" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold transition-colors">
+                Cancel
+            </button>
+            <button @click="savePayment()" class="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors">
+                Save Payment
+            </button>
+        </div>
+    </div>
+
+    <!-- WALLET CASH OUT MODAL -->
+    <div x-show="walletTransferForm.open" @click="closeWalletTransferModal()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
+
+    <div x-show="walletTransferForm.open" class="fixed inset-x-4 top-20 mx-auto max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-2xl z-50 border border-slate-200 dark:border-slate-700 overflow-hidden" style="display: none;" x-transition>
+        <div class="px-5 py-4 border-b border-slate-200 bg-emerald-50 dark:border-slate-700 dark:bg-emerald-950/20">
+            <h2 class="text-lg font-bold">Cash Out</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Move online wallet money into physical Cash on Hand.
+            </p>
+        </div>
+
+        <div class="p-5 grid gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Wallet</label>
+                <select x-model="walletTransferForm.account" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <template x-for="account in getPaymentAccounts().filter(item => item !== 'Cash')" :key="account">
+                        <option :value="account" x-text="account"></option>
+                    </template>
+                </select>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Available: <span class="font-bold" x-text="formatPHP(getWalletBalance(walletTransferForm.account))"></span>
+                </p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Amount cashed out</label>
+                <input type="number" min="0.01" step="0.01" x-model.number="walletTransferForm.amount" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Cash-out date</label>
+                <input type="date" x-model="walletTransferForm.date" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Note</label>
+                <input type="text" x-model="walletTransferForm.note" placeholder="Cash-out note" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+        </div>
+
+        <div class="flex gap-3 px-5 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+            <button @click="closeWalletTransferModal()" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold transition-colors">
+                Cancel
+            </button>
+            <button @click="saveWalletTransfer()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors">
+                Save Cash Out
+            </button>
+        </div>
+    </div>
+
     <!-- PAST ORDER MODAL -->
     <div x-show="pastOrderForm.open" @click="closePastOrderModal()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
 
@@ -1374,6 +1509,7 @@
                 expenses: [],
                 cashAdjustments: [],
                 stockAdjustments: [],
+                walletTransfers: [],
                 dailyClosings: [],
                 currentPage: 'dashboard',
                 currentTab: 'sales',
@@ -1405,7 +1541,8 @@
                     orderDate: '',
                     quantity: 1,
                     type: 'Regular',
-                    unitPrice: 250
+                    unitPrice: 250,
+                    paymentAccount: 'Cash'
                 },
                 restockForm: {
                     quantity: 100,
@@ -1449,6 +1586,21 @@
                     unitPrice: 250,
                     paid: true,
                     paymentMethod: ''
+                },
+                paymentForm: {
+                    open: false,
+                    saleId: null,
+                    amount: '',
+                    account: 'Cash',
+                    date: '',
+                    note: ''
+                },
+                walletTransferForm: {
+                    open: false,
+                    account: 'GCash',
+                    amount: '',
+                    date: '',
+                    note: ''
                 },
                 syncForm: {
                     email: '',
@@ -1539,6 +1691,7 @@
                         expenses: this.expenses,
                         cashAdjustments: this.cashAdjustments,
                         stockAdjustments: this.stockAdjustments,
+                        walletTransfers: this.walletTransfers,
                         dailyClosings: this.dailyClosings,
                         config: this.config
                     };
@@ -1551,6 +1704,7 @@
                     this.expenses = Array.isArray(savedData.expenses) ? savedData.expenses : [];
                     this.cashAdjustments = Array.isArray(savedData.cashAdjustments) ? savedData.cashAdjustments : [];
                     this.stockAdjustments = Array.isArray(savedData.stockAdjustments) ? savedData.stockAdjustments : [];
+                    this.walletTransfers = Array.isArray(savedData.walletTransfers) ? savedData.walletTransfers : [];
                     this.dailyClosings = Array.isArray(savedData.dailyClosings) ? savedData.dailyClosings : [];
                     if (savedData.config) this.config = savedData.config;
                     this.normalizeHistoricalAprilSales();
@@ -1717,6 +1871,7 @@
                     const expenses = Array.isArray(data.expenses) ? data.expenses : [];
                     const cashAdjustments = Array.isArray(data.cashAdjustments) ? data.cashAdjustments : [];
                     const stockAdjustments = Array.isArray(data.stockAdjustments) ? data.stockAdjustments : [];
+                    const walletTransfers = Array.isArray(data.walletTransfers) ? data.walletTransfers : [];
                     const dailyClosings = Array.isArray(data.dailyClosings) ? data.dailyClosings : [];
                     const customers = new Set(
                         sales
@@ -1724,24 +1879,25 @@
                             .filter(Boolean)
                     );
                     const financialSales = sales.filter(sale => this.isFinancialSale(sale));
-                    const collectedRevenue = financialSales
-                        .filter(sale => sale.paid)
-                        .reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
+                    const cashCollected = financialSales
+                        .reduce((sum, sale) => sum + this.getSaleCashPaymentTotal(sale), 0);
                     const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
                     const cashAdjustmentTotal = cashAdjustments.reduce((sum, adjustment) => sum + Number(adjustment.difference || 0), 0);
+                    const walletTransferTotal = walletTransfers.reduce((sum, transfer) => sum + Number(transfer.amount || 0), 0);
                     const outstandingLoans = financialSales
-                        .filter(sale => sale.type === 'Loaned' && !sale.paid)
-                        .reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
+                        .filter(sale => sale.type === 'Loaned')
+                        .reduce((sum, sale) => sum + this.getSaleBalance(sale), 0);
 
                     return {
                         sales: sales.length,
                         expenses: expenses.length,
                         cashAdjustments: cashAdjustments.length,
                         stockAdjustments: stockAdjustments.length,
+                        walletTransfers: walletTransfers.length,
                         dailyClosings: dailyClosings.length,
                         customers: customers.size,
                         inventory: Number(data.inventory ?? 0),
-                        cashOnHand: collectedRevenue - expenseTotal + cashAdjustmentTotal,
+                        cashOnHand: cashCollected - expenseTotal + cashAdjustmentTotal + walletTransferTotal,
                         outstandingLoans
                     };
                 },
@@ -1770,7 +1926,7 @@
 
                 hasBackupBusinessData(data) {
                     if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
-                    return ['inventory', 'sales', 'expenses', 'cashAdjustments', 'stockAdjustments', 'dailyClosings', 'config']
+                    return ['inventory', 'sales', 'expenses', 'cashAdjustments', 'stockAdjustments', 'walletTransfers', 'dailyClosings', 'config']
                         .some(key => Object.prototype.hasOwnProperty.call(data, key));
                 },
 
@@ -1781,6 +1937,7 @@
                         expenses: Array.isArray(data.expenses) ? data.expenses : [],
                         cashAdjustments: Array.isArray(data.cashAdjustments) ? data.cashAdjustments : [],
                         stockAdjustments: Array.isArray(data.stockAdjustments) ? data.stockAdjustments : [],
+                        walletTransfers: Array.isArray(data.walletTransfers) ? data.walletTransfers : [],
                         dailyClosings: Array.isArray(data.dailyClosings) ? data.dailyClosings : [],
                         config: data.config && typeof data.config === 'object' ? {
                             ...this.config,
@@ -2470,13 +2627,139 @@
                         this.config.loanPrice;
                 },
 
+                normalizePaymentAccount(account) {
+                    const value = String(account || '').trim().replace(/\s+/g, ' ');
+                    return value || 'Cash';
+                },
+
+                getPaymentAccounts() {
+                    return ['Cash', 'GCash', 'PayPal', 'GoTyme', 'Maya', 'Bank Transfer', 'Other'];
+                },
+
+                getSaleTotal(sale) {
+                    return Number(sale?.quantity || 0) * Number(sale?.unitPrice || 0);
+                },
+
+                getSalePayments(sale) {
+                    if (!sale || !Array.isArray(sale.payments)) return [];
+                    return sale.payments
+                        .map(payment => ({
+                            id: payment.id || Date.now(),
+                            date: payment.date || sale.paidDate || sale.orderDate || sale.date || this.formatDateForInput(),
+                            amount: Number(payment.amount || 0),
+                            account: this.normalizePaymentAccount(payment.account || payment.paymentMethod),
+                            note: String(payment.note || '').trim()
+                        }))
+                        .filter(payment => Number.isFinite(payment.amount) && payment.amount > 0);
+                },
+
+                getSalePaymentTotal(sale) {
+                    const payments = this.getSalePayments(sale);
+                    if (payments.length > 0) {
+                        return payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+                    }
+                    if (this.isFinancialSale(sale) && sale?.paid) {
+                        return this.getSaleTotal(sale);
+                    }
+                    return 0;
+                },
+
+                getSaleCashPaymentTotal(sale) {
+                    const payments = this.getSalePayments(sale);
+                    if (payments.length > 0) {
+                        return payments
+                            .filter(payment => this.normalizePaymentAccount(payment.account) === 'Cash')
+                            .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+                    }
+                    if (this.isFinancialSale(sale) && sale?.paid) {
+                        return this.getSaleTotal(sale);
+                    }
+                    return 0;
+                },
+
+                getSaleBalance(sale) {
+                    if (!this.isFinancialSale(sale)) return 0;
+                    return Math.max(0, this.getSaleTotal(sale) - this.getSalePaymentTotal(sale));
+                },
+
+                getSaleStatus(sale) {
+                    if (!this.isFinancialSale(sale)) return sale?.paid ? 'Paid' : 'Unpaid';
+                    const paidAmount = this.getSalePaymentTotal(sale);
+                    const balance = this.getSaleBalance(sale);
+                    if (balance <= 0 && this.getSaleTotal(sale) > 0) return 'Paid';
+                    if (paidAmount > 0) return 'Partially Paid';
+                    return 'Unpaid';
+                },
+
+                syncSalePaymentStatus(sale) {
+                    if (!sale || this.isHistoryOnlySale(sale)) return false;
+                    const wasPaid = Boolean(sale.paid);
+                    const balance = this.getSaleBalance(sale);
+                    const isPaid = balance <= 0 && this.getSaleTotal(sale) > 0;
+                    sale.paid = isPaid;
+                    if (isPaid) {
+                        const payments = this.getSalePayments(sale);
+                        const latestPayment = payments[payments.length - 1] || null;
+                        sale.paidDate = latestPayment ? latestPayment.date : (sale.paidDate || sale.orderDate || sale.date || this.formatDateForInput());
+                        sale.paidDateDisplay = this.formatDisplayDate(sale.paidDate);
+                    } else if (wasPaid) {
+                        sale.paidDate = '';
+                        sale.paidDateDisplay = '';
+                    }
+                    return true;
+                },
+
+                getWalletTransfersTotal() {
+                    return this.walletTransfers
+                        .reduce((sum, transfer) => sum + Number(transfer.amount || 0), 0);
+                },
+
+                getWalletBalances() {
+                    const balances = {};
+                    this.sales
+                        .filter(sale => this.isFinancialSale(sale))
+                        .forEach(sale => {
+                            this.getSalePayments(sale).forEach(payment => {
+                                const account = this.normalizePaymentAccount(payment.account);
+                                if (account === 'Cash') return;
+                                balances[account] = (balances[account] || 0) + Number(payment.amount || 0);
+                            });
+                        });
+
+                    this.walletTransfers.forEach(transfer => {
+                        const account = this.normalizePaymentAccount(transfer.account);
+                        if (account === 'Cash') return;
+                        balances[account] = (balances[account] || 0) - Number(transfer.amount || 0);
+                    });
+
+                    this.getPaymentAccounts()
+                        .filter(account => account !== 'Cash')
+                        .forEach(account => {
+                            balances[account] = Number((balances[account] || 0).toFixed(2));
+                        });
+
+                    return balances;
+                },
+
+                getWalletBalance(account) {
+                    return this.getWalletBalances()[this.normalizePaymentAccount(account)] || 0;
+                },
+
+                getWalletBalanceRows() {
+                    const balances = this.getWalletBalances();
+                    return Object.entries(balances)
+                        .filter(([, amount]) => Math.abs(Number(amount || 0)) > 0.001)
+                        .map(([account, amount]) => ({ account, amount }))
+                        .sort((a, b) => a.account.localeCompare(b.account));
+                },
+
                 getCashOnHand() {
-                    let totalCollectedRevenue = this.sales
-                        .filter(s => this.isFinancialSale(s) && s.paid)
-                        .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+                    let totalCashCollected = this.sales
+                        .filter(s => this.isFinancialSale(s))
+                        .reduce((sum, s) => sum + this.getSaleCashPaymentTotal(s), 0);
                     let totalOutflowExpenses = this.expenses
                         .reduce((sum, e) => sum + e.amount, 0);
-                    return totalCollectedRevenue - totalOutflowExpenses + this.getCashAdjustmentTotal();
+                    return totalCashCollected - totalOutflowExpenses + this.getCashAdjustmentTotal() + this.getWalletTransfersTotal();
                 },
 
                 getCashAdjustmentTotal() {
@@ -2567,8 +2850,8 @@
 
                 getOutstandingLoans() {
                     return this.sales
-                        .filter(s => this.isFinancialSale(s) && s.type === 'Loaned' && !s.paid)
-                        .reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
+                        .filter(s => this.isFinancialSale(s) && s.type === 'Loaned')
+                        .reduce((sum, s) => sum + this.getSaleBalance(s), 0);
                 },
 
                 getDateInputValue(dateValue) {
@@ -2604,11 +2887,26 @@
                     const date = dateValue || this.formatDateForInput();
                     const financialSales = this.sales.filter(sale => this.isFinancialSale(sale));
                     const orderedSales = financialSales.filter(sale => this.isSameBusinessDate(sale.orderDate || sale.date, date));
-                    const paidSales = financialSales.filter(sale => sale.paid && this.isSameBusinessDate(sale.paidDate || sale.orderDate || sale.date, date));
+                    const payments = financialSales.flatMap(sale => {
+                        const salePayments = this.getSalePayments(sale);
+                        if (salePayments.length > 0) return salePayments;
+                        if (sale.paid) {
+                            return [{
+                                date: sale.paidDate || sale.orderDate || sale.date,
+                                amount: this.getSaleTotal(sale),
+                                account: 'Cash'
+                            }];
+                        }
+                        return [];
+                    });
+                    const dailyPayments = payments.filter(payment => this.isSameBusinessDate(payment.date, date));
                     const dailyExpenses = this.expenses.filter(expense => this.isSameBusinessDate(expense.date, date));
 
                     const salesRevenue = orderedSales.reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
-                    const collectedRevenue = paidSales.reduce((sum, sale) => sum + (Number(sale.quantity || 0) * Number(sale.unitPrice || 0)), 0);
+                    const collectedRevenue = dailyPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+                    const cashCollected = dailyPayments
+                        .filter(payment => this.normalizePaymentAccount(payment.account) === 'Cash')
+                        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
                     const expenseTotal = dailyExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
                     return {
@@ -2619,7 +2917,7 @@
                         salesRevenue,
                         collectedRevenue,
                         expenseTotal,
-                        netCashChange: collectedRevenue - expenseTotal,
+                        netCashChange: cashCollected - expenseTotal,
                         outstandingLoans: this.getOutstandingLoans(),
                         cashOnHand: this.getCashOnHand(),
                         stockOnHand: this.inventory
@@ -2716,8 +3014,8 @@
                         summary.totalValue += total;
                         summary.history.push(sale);
 
-                        if (this.isFinancialSale(sale) && sale.type === 'Loaned' && !sale.paid) {
-                            summary.unpaidAmount += total;
+                        if (this.isFinancialSale(sale) && sale.type === 'Loaned' && this.getSaleBalance(sale) > 0) {
+                            summary.unpaidAmount += this.getSaleBalance(sale);
                             summary.unpaidCount += 1;
                         }
 
@@ -2943,6 +3241,143 @@
                     return true;
                 },
 
+                getPaymentFormDefaults(saleId = null) {
+                    return {
+                        open: false,
+                        saleId,
+                        amount: '',
+                        account: 'Cash',
+                        date: this.formatDateForInput(),
+                        note: ''
+                    };
+                },
+
+                openPaymentModal(id) {
+                    const sale = this.sales.find(record => record.id === id);
+                    if (!sale || !this.isFinancialSale(sale) || this.getSaleBalance(sale) <= 0) return false;
+                    this.paymentForm = {
+                        ...this.getPaymentFormDefaults(id),
+                        open: true,
+                        amount: Number(this.getSaleBalance(sale).toFixed(2))
+                    };
+
+                    if (typeof window !== 'undefined' && window.setTimeout) {
+                        window.setTimeout(() => this.renderIcons(), 0);
+                    } else {
+                        this.renderIcons();
+                    }
+                    return true;
+                },
+
+                closePaymentModal() {
+                    this.paymentForm = this.getPaymentFormDefaults();
+                },
+
+                addSalePayment(sale, payment) {
+                    if (!sale || !payment) return false;
+                    const amount = Number(payment.amount);
+                    if (!Number.isFinite(amount) || amount <= 0) return false;
+                    const date = payment.date || this.formatDateForInput();
+                    const account = this.normalizePaymentAccount(payment.account);
+                    sale.payments = this.getSalePayments(sale);
+                    sale.payments.push({
+                        id: payment.id || Date.now(),
+                        date,
+                        dateDisplay: this.formatDisplayDate(date),
+                        amount,
+                        account,
+                        note: String(payment.note || '').trim()
+                    });
+                    sale.paymentMethod = account;
+                    this.syncSalePaymentStatus(sale);
+                    return true;
+                },
+
+                savePayment() {
+                    const sale = this.sales.find(record => record.id === this.paymentForm.saleId);
+                    if (!sale || !this.isFinancialSale(sale)) return false;
+
+                    const amount = Number(this.paymentForm.amount);
+                    const balance = this.getSaleBalance(sale);
+                    if (!Number.isFinite(amount) || amount <= 0) {
+                        alert('Please enter a payment amount above zero.');
+                        return false;
+                    }
+                    if (amount > balance + 0.001) {
+                        alert('Payment is higher than the remaining balance.');
+                        return false;
+                    }
+
+                    const added = this.addSalePayment(sale, {
+                        amount,
+                        account: this.paymentForm.account,
+                        date: this.paymentForm.date || this.formatDateForInput(),
+                        note: this.paymentForm.note
+                    });
+                    if (!added) return false;
+
+                    this.persistState();
+                    this.closePaymentModal();
+                    return true;
+                },
+
+                getWalletTransferFormDefaults(account = 'GCash') {
+                    return {
+                        open: false,
+                        account: this.normalizePaymentAccount(account),
+                        amount: '',
+                        date: this.formatDateForInput(),
+                        note: ''
+                    };
+                },
+
+                openWalletTransferModal(account = 'GCash') {
+                    this.walletTransferForm = {
+                        ...this.getWalletTransferFormDefaults(account),
+                        open: true
+                    };
+                    if (typeof window !== 'undefined' && window.setTimeout) {
+                        window.setTimeout(() => this.renderIcons(), 0);
+                    } else {
+                        this.renderIcons();
+                    }
+                    return true;
+                },
+
+                closeWalletTransferModal() {
+                    this.walletTransferForm = this.getWalletTransferFormDefaults();
+                },
+
+                saveWalletTransfer() {
+                    const account = this.normalizePaymentAccount(this.walletTransferForm.account);
+                    const amount = Number(this.walletTransferForm.amount);
+                    if (account === 'Cash') {
+                        alert('Choose an online wallet to cash out.');
+                        return false;
+                    }
+                    if (!Number.isFinite(amount) || amount <= 0) {
+                        alert('Please enter a cash-out amount above zero.');
+                        return false;
+                    }
+                    if (amount > this.getWalletBalance(account) + 0.001) {
+                        alert('Cash-out amount is higher than the wallet balance.');
+                        return false;
+                    }
+
+                    const date = this.walletTransferForm.date || this.formatDateForInput();
+                    this.walletTransfers.unshift({
+                        id: Date.now(),
+                        account,
+                        amount,
+                        date,
+                        dateDisplay: this.formatDisplayDate(date),
+                        note: String(this.walletTransferForm.note || '').trim()
+                    });
+                    this.persistState();
+                    this.closeWalletTransferModal();
+                    return true;
+                },
+
                 openCustomerOrderEdit(id) {
                     const sale = this.sales.find(record => record.id === id);
                     if (!sale) return false;
@@ -3058,6 +3493,8 @@
                     const orderDate = this.saleForm.orderDate || this.formatDateForInput();
                     const orderDateDisplay = this.formatDisplayDate(orderDate);
                     const isPaid = this.saleForm.type === 'Regular';
+                    const total = Number(this.saleForm.quantity || 0) * Number(this.saleForm.unitPrice || 0);
+                    const paymentAccount = this.normalizePaymentAccount(this.saleForm.paymentAccount);
                     this.sales.unshift({
                         id: Date.now(),
                         date: orderDate,
@@ -3070,13 +3507,23 @@
                         quantity: this.saleForm.quantity,
                         type: this.saleForm.type,
                         unitPrice: this.saleForm.unitPrice,
-                        paid: isPaid
+                        paid: isPaid,
+                        paymentMethod: isPaid ? paymentAccount : '',
+                        payments: isPaid ? [{
+                            id: Date.now(),
+                            date: orderDate,
+                            dateDisplay: orderDateDisplay,
+                            amount: total,
+                            account: paymentAccount,
+                            note: ''
+                        }] : []
                     });
                     this.inventory -= this.saleForm.quantity;
                     this.persistState();
                     this.saleForm.customer = '';
                     this.saleForm.orderDate = this.formatDateForInput();
                     this.saleForm.quantity = 1;
+                    this.saleForm.paymentAccount = 'Cash';
                     this.updateSalePrice();
                 },
 
@@ -3115,10 +3562,13 @@
                 collectLoan(id) {
                     const targetSale = this.sales.find(s => s.id === id);
                     if (!targetSale || this.isHistoryOnlySale(targetSale)) return false;
-                    const paidDate = this.formatDateForInput();
-                    targetSale.paid = true;
-                    targetSale.paidDate = paidDate;
-                    targetSale.paidDateDisplay = this.formatDisplayDate(paidDate);
+                    const balance = this.getSaleBalance(targetSale);
+                    if (balance <= 0) return false;
+                    this.addSalePayment(targetSale, {
+                        amount: balance,
+                        account: 'Cash',
+                        date: this.formatDateForInput()
+                    });
                     this.persistState();
                     return true;
                 },
