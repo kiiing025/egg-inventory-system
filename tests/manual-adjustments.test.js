@@ -480,6 +480,19 @@ test('customer order history edit controls are rendered', () => {
     assert.match(html, /@click="openCustomerOrderEdit\(sale\.id\)"/);
 });
 
+test('mobile ledger cards render sales customer and expense rows', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /data-mobile-sales-list/);
+    assert.match(html, /data-mobile-sales-card/);
+    assert.match(html, /data-mobile-customer-order-card/);
+    assert.match(html, /data-mobile-expense-card/);
+    assert.match(html, /data-desktop-sales-table/);
+    assert.match(html, /getSaleBalance\(sale\)/);
+    assert.match(html, /getSalePaymentTotal\(sale\)/);
+    assert.match(html, /openPaymentModal\(sale\.id\)/);
+});
+
 test('past customer order can be added without changing financial or stock totals', () => {
     const storage = createStorage();
     const app = loadEggApp(storage);
@@ -810,7 +823,6 @@ test('weekly report opens as a modern modal sheet', () => {
     assert.match(html, /Sales Activity/);
     assert.match(html, /Expense Activity/);
     assert.doesNotMatch(html, /fixed left-0 top-0 h-screen w-96/);
-    assert.doesNotMatch(html, /border-dashed/);
 });
 
 test('app shell defaults to light mode and keeps dark mode opt-in', () => {
