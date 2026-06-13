@@ -240,6 +240,7 @@ test('mobile ledger navigation uses primary tabs and a more menu', () => {
     assert.match(html, /@click="setCurrentPage\('adjustments'\)"/);
     assert.match(html, /@click="setCurrentPage\('sync'\)"/);
 
+    app.showMobileMoreMenu = true;
     app.setCurrentPage('expenses');
     assert.equal(app.currentPage, 'expenses');
     assert.equal(app.showMobileMoreMenu, false);
