@@ -1071,33 +1071,45 @@
     </main>
 
     <nav aria-label="Mobile bottom navigation" class="lg:hidden fixed inset-x-0 bottom-0 z-40 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pointer-events-none">
-        <div class="pointer-events-auto mx-auto max-w-lg rounded-3xl bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 border border-white/10 px-2 py-2 grid grid-cols-6 gap-1">
-            <button @click="currentPage = 'dashboard'" :class="mobileBottomNavItemClass('dashboard')" class="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200">
+        <div class="pointer-events-auto mx-auto max-w-md rounded-[1.75rem] border border-white/15 bg-[#161817]/95 px-2 py-2 text-white shadow-2xl shadow-slate-950/25 backdrop-blur-xl grid grid-cols-5 gap-1">
+            <button data-mobile-tab="dashboard" @click="setCurrentPage('dashboard')" :class="mobileBottomNavItemClass('dashboard')" class="min-h-[58px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 active:scale-95">
                 <i data-lucide="layout-dashboard" :class="mobileBottomNavIconClass('dashboard')" class="h-5 w-5"></i>
-                <span class="text-[10px] font-semibold leading-none">Home</span>
+                <span class="text-[10px] font-bold leading-none">Home</span>
             </button>
-            <button @click="currentPage = 'customers'" :class="mobileBottomNavItemClass('customers')" class="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200">
+            <button data-mobile-tab="customers" @click="setCurrentPage('customers')" :class="mobileBottomNavItemClass('customers')" class="min-h-[58px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 active:scale-95">
                 <i data-lucide="users" :class="mobileBottomNavIconClass('customers')" class="h-5 w-5"></i>
-                <span class="text-[10px] font-semibold leading-none">People</span>
+                <span class="text-[10px] font-bold leading-none">People</span>
             </button>
-            <button @click="currentPage = 'sales'" :class="mobileBottomNavItemClass('sales')" class="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200">
+            <button data-mobile-tab="closing" @click="setCurrentPage('closing')" :class="mobileBottomNavItemClass('closing')" class="min-h-[58px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 active:scale-95">
+                <i data-lucide="calendar-check" :class="mobileBottomNavIconClass('closing')" class="h-5 w-5"></i>
+                <span class="text-[10px] font-bold leading-none">Close</span>
+            </button>
+            <button data-mobile-tab="sales" @click="setCurrentPage('sales')" :class="mobileBottomNavItemClass('sales')" class="min-h-[58px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 active:scale-95">
                 <i data-lucide="shopping-bag" :class="mobileBottomNavIconClass('sales')" class="h-5 w-5"></i>
-                <span class="text-[10px] font-semibold leading-none">Sales</span>
+                <span class="text-[10px] font-bold leading-none">Sales</span>
             </button>
-            <button @click="currentPage = 'expenses'" :class="mobileBottomNavItemClass('expenses')" class="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200">
-                <i data-lucide="receipt-text" :class="mobileBottomNavIconClass('expenses')" class="h-5 w-5"></i>
-                <span class="text-[10px] font-semibold leading-none">Costs</span>
-            </button>
-            <button @click="currentPage = 'adjustments'" :class="mobileBottomNavItemClass('adjustments')" class="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200">
-                <i data-lucide="sliders-horizontal" :class="mobileBottomNavIconClass('adjustments')" class="h-5 w-5"></i>
-                <span class="text-[10px] font-semibold leading-none">Edit</span>
-            </button>
-            <button @click="currentPage = 'sync'" :class="mobileBottomNavItemClass('sync')" class="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200">
-                <i data-lucide="cloud" :class="mobileBottomNavIconClass('sync')" class="h-5 w-5"></i>
-                <span class="text-[10px] font-semibold leading-none">Sync</span>
+            <button data-mobile-tab="more" @click="showMobileMoreMenu = !showMobileMoreMenu; renderIcons()" :class="isMorePage() || showMobileMoreMenu ? 'bg-[#d34036] text-white -translate-y-3 shadow-lg shadow-[#d34036]/30' : 'text-slate-200 hover:bg-white/10 hover:text-white'" class="min-h-[58px] flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 active:scale-95">
+                <i data-lucide="menu" class="h-5 w-5"></i>
+                <span class="text-[10px] font-bold leading-none">More</span>
             </button>
         </div>
     </nav>
+
+    <div x-show="showMobileMoreMenu" @click="showMobileMoreMenu = false" class="lg:hidden fixed inset-0 z-30 bg-slate-950/20" style="display: none;" x-transition.opacity.duration.150ms></div>
+    <div data-mobile-more-menu x-show="showMobileMoreMenu" class="lg:hidden fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.9rem)] z-50 mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-2 text-slate-900 shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" style="display: none;" x-transition>
+        <button @click="setCurrentPage('expenses')" class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition-colors hover:bg-slate-100 dark:hover:bg-white/10">
+            <i data-lucide="receipt-text" class="h-5 w-5 text-[#d34036]"></i>
+            Expenses Ledger
+        </button>
+        <button @click="setCurrentPage('adjustments')" class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition-colors hover:bg-slate-100 dark:hover:bg-white/10">
+            <i data-lucide="sliders-horizontal" class="h-5 w-5 text-[#d34036]"></i>
+            Manual Adjustments
+        </button>
+        <button @click="setCurrentPage('sync')" class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition-colors hover:bg-slate-100 dark:hover:bg-white/10">
+            <i data-lucide="cloud" class="h-5 w-5 text-[#d34036]"></i>
+            Cloud Sync
+        </button>
+    </div>
 
     <!-- ADJUSTMENT MODAL -->
     <div x-show="adjustmentModal.open" @click="closeAdjustmentModal()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
@@ -1513,6 +1525,7 @@
                 dailyClosings: [],
                 currentPage: 'dashboard',
                 currentTab: 'sales',
+                showMobileMoreMenu: false,
                 customerSearch: '',
                 selectedCustomerKey: '',
                 syncClient: null,
@@ -2566,6 +2579,16 @@
                     localStorage.setItem('egg_dark_mode', String(this.darkMode));
                 },
 
+                setCurrentPage(page) {
+                    this.currentPage = page;
+                    this.showMobileMoreMenu = false;
+                    this.renderIcons();
+                },
+
+                isMorePage() {
+                    return ['expenses', 'adjustments', 'sync'].includes(this.currentPage);
+                },
+
                 navButtonClass(page) {
                     return this.currentPage === page ?
                         'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm' :
@@ -2581,7 +2604,7 @@
                 mobileBottomNavItemClass(page) {
                     return this.currentPage === page ?
                         'bg-[#d34036] text-white -translate-y-3 shadow-lg shadow-[#d34036]/30' :
-                        'text-slate-300 hover:bg-white/10 hover:text-white';
+                        'text-slate-200 hover:bg-white/10 hover:text-white';
                 },
 
                 mobileBottomNavIconClass(page) {

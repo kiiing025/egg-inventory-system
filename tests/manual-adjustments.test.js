@@ -221,6 +221,31 @@ test('mobile navigation uses a fixed bottom tab bar with icons', () => {
     assert.doesNotMatch(html, /lg:hidden grid grid-cols-2 sm:grid-cols-5/);
 });
 
+test('mobile ledger navigation uses primary tabs and a more menu', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const app = loadEggApp();
+
+    assert.equal(app.showMobileMoreMenu, false);
+    assert.equal(typeof app.setCurrentPage, 'function');
+    assert.equal(typeof app.isMorePage, 'function');
+
+    assert.match(html, /data-mobile-tab="dashboard"/);
+    assert.match(html, /data-mobile-tab="customers"/);
+    assert.match(html, /data-mobile-tab="closing"/);
+    assert.match(html, /data-mobile-tab="sales"/);
+    assert.match(html, /data-mobile-tab="more"/);
+
+    assert.match(html, /data-mobile-more-menu/);
+    assert.match(html, /@click="setCurrentPage\('expenses'\)"/);
+    assert.match(html, /@click="setCurrentPage\('adjustments'\)"/);
+    assert.match(html, /@click="setCurrentPage\('sync'\)"/);
+
+    app.setCurrentPage('expenses');
+    assert.equal(app.currentPage, 'expenses');
+    assert.equal(app.showMobileMoreMenu, false);
+    assert.equal(app.isMorePage(), true);
+});
+
 test('customer summaries group sales and calculate unpaid loan balances', () => {
     const app = loadEggApp();
     app.sales = [
