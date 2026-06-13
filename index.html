@@ -1564,17 +1564,20 @@
     <div x-show="showReceiptModal" @click="showReceiptModal = false" class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40" style="display: none;" x-transition.opacity.duration.200ms></div>
 
     <div x-show="showReceiptModal" role="dialog" aria-modal="true" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style="display: none;">
-        <div @click.stop class="w-full sm:max-w-4xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-slate-50 dark:bg-slate-900 text-slate-950 dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-white/10"
+        <div data-weekly-report-sheet @click.stop class="w-full sm:max-w-4xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-[#f8f5f0] dark:bg-slate-900 text-slate-950 dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-white/10"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="translate-y-full sm:translate-y-4 opacity-0 sm:scale-95"
             x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="translate-y-0 opacity-100 sm:scale-100"
             x-transition:leave-end="translate-y-full sm:translate-y-4 opacity-0 sm:scale-95">
-            <div class="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-white/10 px-5 py-4">
+            <div class="sticky top-0 z-10 bg-[#f8f5f0]/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-white/10 px-5 py-4">
+                <div class="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300 sm:hidden dark:bg-slate-700"></div>
                 <div class="flex items-center justify-between gap-4">
                     <div class="flex items-center gap-3">
-                        <img src="HEAD.png" alt="YOLK" class="h-10 w-10 object-contain">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#d34036]/10">
+                            <img src="HEAD.png" alt="YOLK" class="h-9 w-9 object-contain">
+                        </div>
                         <div>
                             <p class="text-xs font-bold uppercase tracking-wider text-[#d34036]">Weekly Performance</p>
                             <h2 class="text-xl font-black tracking-normal">YOLK Report</h2>
@@ -1587,45 +1590,50 @@
             </div>
 
             <div class="p-5 space-y-5">
-                <div class="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 p-4">
+                <div class="grid gap-3 rounded-3xl bg-white/90 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 p-4 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
                     <label class="space-y-1">
                         <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Start Date</span>
-                        <input type="date" x-model="exportForm.startDate" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
+                        <input type="date" x-model="exportForm.startDate" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
                     </label>
                     <label class="space-y-1">
                         <span class="text-xs font-bold uppercase tracking-wider text-slate-500">End Date</span>
-                        <input type="date" x-model="exportForm.endDate" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
+                        <input type="date" x-model="exportForm.endDate" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
                     </label>
-                    <button @click="generateReceipt()" class="px-4 py-2 rounded-lg bg-[#d34036] hover:bg-[#b8322b] text-white font-bold transition-colors">
+                    <button @click="generateReceipt()" class="yolk-action inline-flex items-center justify-center gap-2 rounded-2xl bg-[#d34036] px-4 py-2.5 text-sm font-black text-white hover:bg-[#b8322b]">
+                        <i data-lucide="refresh-cw" class="h-4 w-4"></i>
                         Generate
+                    </button>
+                    <button @click="exportToExcel()" class="yolk-action inline-flex items-center justify-center gap-2 rounded-2xl border border-[#d34036]/20 bg-[#d34036]/10 px-4 py-2.5 text-sm font-black text-[#d34036] hover:bg-[#d34036]/15 dark:border-[#d34036]/30 dark:bg-[#d34036]/15 dark:text-red-200">
+                        <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
+                        Export Excel
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                    <div class="rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 p-4">
+                <div data-weekly-report-summary class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div class="yolk-ledger-card rounded-3xl p-4">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Revenue</p>
                         <p class="mt-2 text-lg font-black text-emerald-600 dark:text-emerald-400" x-text="formatPHP(receiptData.totalSalesRevenue)"></p>
                     </div>
-                    <div class="rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 p-4">
+                    <div class="yolk-ledger-card rounded-3xl p-4">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Expenses</p>
                         <p class="mt-2 text-lg font-black text-rose-600 dark:text-rose-400" x-text="formatPHP(receiptData.totalExpenses)"></p>
                     </div>
-                    <div class="rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 p-4">
+                    <div class="yolk-ledger-card rounded-3xl p-4">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Net Profit</p>
                         <p class="mt-2 text-lg font-black text-[#d34036]" x-text="formatPHP(receiptData.netProfit)"></p>
                     </div>
-                    <div class="rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 p-4">
+                    <div class="yolk-ledger-card rounded-3xl p-4">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cash</p>
                         <p class="mt-2 text-lg font-black text-blue-600 dark:text-blue-400" x-text="formatPHP(receiptData.cashOnHand)"></p>
                     </div>
-                    <div class="rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 p-4 col-span-2 lg:col-span-1">
+                    <div class="yolk-ledger-card rounded-3xl p-4 col-span-2 lg:col-span-1">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Receivable</p>
                         <p class="mt-2 text-lg font-black text-amber-600 dark:text-amber-400" x-text="formatPHP(receiptData.accountsReceivable)"></p>
                     </div>
                 </div>
 
                 <div class="grid lg:grid-cols-2 gap-4">
-                    <div class="rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 overflow-hidden">
+                    <div data-weekly-report-sales class="rounded-3xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 overflow-hidden">
                         <div class="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
                             <h3 class="font-black">Sales Activity</h3>
                             <span class="text-xs font-bold text-slate-500" x-text="(receiptData.weeklySales || []).length + ' orders'"></span>
@@ -1648,7 +1656,7 @@
                         </div>
                     </div>
 
-                    <div class="rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 overflow-hidden">
+                    <div data-weekly-report-expenses class="rounded-3xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 overflow-hidden">
                         <div class="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
                             <h3 class="font-black">Expense Activity</h3>
                             <span class="text-xs font-bold text-slate-500" x-text="(receiptData.weeklyExpenses || []).length + ' items'"></span>
@@ -1672,7 +1680,13 @@
                     </div>
                 </div>
 
-                <p class="text-center text-xs text-slate-500">Take a screenshot or export the report when you need a saved copy.</p>
+                <div class="flex flex-col gap-3 rounded-3xl bg-white/80 p-4 text-xs text-slate-500 dark:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between">
+                    <span>Use this report for weekly checking, screenshots, or spreadsheet export.</span>
+                    <button @click="exportToExcel()" class="yolk-action inline-flex items-center justify-center gap-2 rounded-2xl bg-[#1f2421] px-4 py-2.5 text-sm font-black text-white hover:bg-slate-700 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                        <i data-lucide="download" class="h-4 w-4"></i>
+                        Export Excel
+                    </button>
+                </div>
             </div>
         </div>
     </div>

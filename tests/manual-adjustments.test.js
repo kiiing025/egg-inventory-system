@@ -818,10 +818,16 @@ test('weekly report opens as a modern modal sheet', () => {
     assert.match(html, /rounded-t-3xl sm:rounded-3xl/);
     assert.match(html, /x-transition:enter="[^"]*duration-300/);
     assert.match(html, /Weekly Performance/);
+    assert.match(html, /data-weekly-report-sheet/);
+    assert.match(html, /data-weekly-report-summary/);
+    assert.match(html, /data-weekly-report-sales/);
+    assert.match(html, /data-weekly-report-expenses/);
     assert.match(html, /Revenue/);
     assert.match(html, /Net Profit/);
     assert.match(html, /Sales Activity/);
     assert.match(html, /Expense Activity/);
+    assert.match(html, /@click="exportToExcel\(\)"/);
+    assert.match(html, /Export Excel/);
     assert.doesNotMatch(html, /fixed left-0 top-0 h-screen w-96/);
 });
 
