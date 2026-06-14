@@ -69,6 +69,37 @@ test('manual cash adjustment sets cash on hand by storing the difference', () =>
     assert.equal(app.cashAdjustments[0].note, 'Emergency cash added');
 });
 
+test('manual cash adjustment changes net profit by the cash difference', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { quantity: 4, unitPrice: 250, paid: true }
+    ];
+    app.expenses = [
+        { amount: 300, category: 'Restocking Cost' }
+    ];
+
+    assert.equal(app.getCashOnHand(), 700);
+    assert.equal(app.getNetProfit(), 700);
+
+    app.openAdjustmentModal('cash');
+    app.adjustmentModal.value = 550;
+    app.adjustmentModal.note = 'Physical cash count was short';
+
+    assert.equal(app.saveAdjustment(), true);
+    assert.equal(app.getCashOnHand(), 550);
+    assert.equal(app.cashAdjustments[0].difference, -150);
+    assert.equal(app.getNetProfit(), 550);
+
+    app.openAdjustmentModal('cash');
+    app.adjustmentModal.value = 600;
+    app.adjustmentModal.note = 'Found extra cash';
+
+    assert.equal(app.saveAdjustment(), true);
+    assert.equal(app.getCashOnHand(), 600);
+    assert.equal(app.cashAdjustments[0].difference, 50);
+    assert.equal(app.getNetProfit(), 600);
+});
+
 test('manual stock adjustment sets inventory directly', () => {
     const app = loadEggApp();
     app.inventory = 100;
