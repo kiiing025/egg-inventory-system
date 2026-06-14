@@ -1,4 +1,4 @@
-const CACHE_NAME = 'egg-inventory-cache-v22';
+const CACHE_NAME = 'egg-inventory-cache-v23';
 const APP_ASSETS = [
   './',
   './index.html',
@@ -26,6 +26,12 @@ self.addEventListener('activate', event => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', event => {

@@ -20,7 +20,6 @@
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="sync-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -40,7 +39,7 @@
         }
 
         .loading-logo-bounce {
-            animation: yolkJump 0.56s cubic-bezier(0.28, 0.84, 0.42, 1) 5 forwards;
+            animation: yolkJump 0.18s cubic-bezier(0.28, 0.84, 0.42, 1) 5 forwards;
             transform-origin: center bottom;
         }
 
@@ -80,7 +79,7 @@
         }
 
         .loading-red-swallow-active {
-            animation: yolkCenterSwallow 0.68s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+            animation: yolkCenterSwallow 0.35s cubic-bezier(0.7, 0, 0.3, 1) forwards;
         }
 
         @keyframes yolkSwallow {
@@ -99,17 +98,17 @@
         }
 
         .loading-logo-bounce.loading-logo-swallow {
-            animation: yolkSwallow 0.68s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+            animation: yolkSwallow 0.35s cubic-bezier(0.7, 0, 0.3, 1) forwards;
         }
 
         .loading-screen-exit {
-            transition: background-color 0.28s ease;
+            transition: background-color 0.18s ease;
         }
 
         .loading-screen-exit .loading-copy {
             opacity: 0;
             transform: translateY(8px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
+            transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1878,6 +1877,7 @@
                 salesLedgerCollapsedGroups: {
                     history: true
                 },
+                salesLedgerCache: null,
                 showMobileMoreMenu: false,
                 customerSearch: '',
                 selectedCustomerKey: '',
@@ -2040,10 +2040,19 @@
                         this.isLoading = false;
                     };
                     if (typeof window !== 'undefined' && window.setTimeout) {
+                        const reduceMotion = typeof window.matchMedia === 'function' &&
+                            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                        if (reduceMotion) {
+                            window.setTimeout(() => {
+                                this.isLoadingExit = true;
+                            }, 60);
+                            window.setTimeout(hideLoader, 160);
+                            return;
+                        }
                         window.setTimeout(() => {
                             this.isLoadingExit = true;
-                        }, 2800);
-                        window.setTimeout(hideLoader, 3480);
+                        }, 900);
+                        window.setTimeout(hideLoader, 1250);
                         return;
                     }
                     this.isLoadingExit = true;
@@ -3105,6 +3114,89 @@
                         'border-slate-200 bg-white/80 text-slate-600 hover:border-[#d34036]/40 hover:text-[#d34036] dark:border-white/10 dark:bg-white/5 dark:text-slate-300';
                 },
 
+                getSalesLedgerCacheKey() {
+                    const search = String(this.salesLedgerSearch || '').trim().toLowerCase();
+                    const saleState = this.sales.map(sale => {
+                        const payments = this.getSalePayments(sale)
+                            .map(payment => [
+                                payment.amount,
+                                payment.account,
+                                payment.date,
+                                payment.dateDisplay,
+                                payment.note
+                            ].join(':'))
+                            .join(',');
+                        return [
+                            sale.id,
+                            sale.customer,
+                            sale.orderDate,
+                            sale.date,
+                            sale.paidDate,
+                            sale.quantity,
+                            sale.type,
+                            sale.eggType,
+                            sale.unitPrice,
+                            sale.paid,
+                            sale.paymentMethod,
+                            sale.historyOnly,
+                            sale.affectsCash,
+                            sale.source,
+                            payments
+                        ].join('|');
+                    }).join('~');
+                    return [
+                        search,
+                        this.salesLedgerFilter || 'all',
+                        Number(this.salesLedgerVisibleCount || 30),
+                        saleState
+                    ].join('::');
+                },
+
+                getSalesLedgerView() {
+                    const cacheKey = this.getSalesLedgerCacheKey();
+                    if (this.salesLedgerCache && this.salesLedgerCache.key === cacheKey) {
+                        return this.salesLedgerCache.view;
+                    }
+
+                    const search = String(this.salesLedgerSearch || '').trim().toLowerCase();
+                    const filtered = this.sales
+                        .filter(sale => this.saleMatchesSalesLedgerFilter(sale))
+                        .filter(sale => !search || this.getSalesLedgerSearchText(sale).includes(search))
+                        .slice()
+                        .sort((a, b) => {
+                            const priority = this.getSalesLedgerSortPriority(a) - this.getSalesLedgerSortPriority(b);
+                            if (priority !== 0) return priority;
+                            return this.getSalesLedgerComparableDate(b) - this.getSalesLedgerComparableDate(a);
+                        });
+                    const limit = Math.max(0, Number(this.salesLedgerVisibleCount || 30));
+                    const visible = filtered.slice(0, limit);
+                    const groups = [];
+                    const groupMap = {};
+                    visible.forEach(sale => {
+                        const meta = this.getSalesLedgerGroupMeta(sale);
+                        if (!groupMap[meta.key]) {
+                            groupMap[meta.key] = {
+                                ...meta,
+                                sales: []
+                            };
+                            groups.push(groupMap[meta.key]);
+                        }
+                        groupMap[meta.key].sales.push(sale);
+                    });
+
+                    const view = {
+                        filtered,
+                        visible,
+                        hiddenCount: Math.max(0, filtered.length - visible.length),
+                        groups
+                    };
+                    this.salesLedgerCache = {
+                        key: cacheKey,
+                        view
+                    };
+                    return view;
+                },
+
                 saleHasOnlinePayment(sale) {
                     const payments = this.getSalePayments(sale);
                     if (payments.some(payment => this.normalizePaymentAccount(payment.account) !== 'Cash')) return true;
@@ -3167,25 +3259,15 @@
                 },
 
                 getFilteredSalesLedger() {
-                    const search = String(this.salesLedgerSearch || '').trim().toLowerCase();
-                    return this.sales
-                        .filter(sale => this.saleMatchesSalesLedgerFilter(sale))
-                        .filter(sale => !search || this.getSalesLedgerSearchText(sale).includes(search))
-                        .slice()
-                        .sort((a, b) => {
-                            const priority = this.getSalesLedgerSortPriority(a) - this.getSalesLedgerSortPriority(b);
-                            if (priority !== 0) return priority;
-                            return this.getSalesLedgerComparableDate(b) - this.getSalesLedgerComparableDate(a);
-                        });
+                    return this.getSalesLedgerView().filtered;
                 },
 
                 getSalesLedgerVisibleSales() {
-                    const limit = Math.max(0, Number(this.salesLedgerVisibleCount || 30));
-                    return this.getFilteredSalesLedger().slice(0, limit);
+                    return this.getSalesLedgerView().visible;
                 },
 
                 getSalesLedgerHiddenCount() {
-                    return Math.max(0, this.getFilteredSalesLedger().length - this.getSalesLedgerVisibleSales().length);
+                    return this.getSalesLedgerView().hiddenCount;
                 },
 
                 getSalesLedgerGroupMeta(sale) {
@@ -3212,20 +3294,7 @@
                 },
 
                 getSalesLedgerGroups() {
-                    const groups = [];
-                    const groupMap = {};
-                    this.getSalesLedgerVisibleSales().forEach(sale => {
-                        const meta = this.getSalesLedgerGroupMeta(sale);
-                        if (!groupMap[meta.key]) {
-                            groupMap[meta.key] = {
-                                ...meta,
-                                sales: []
-                            };
-                            groups.push(groupMap[meta.key]);
-                        }
-                        groupMap[meta.key].sales.push(sale);
-                    });
-                    return groups;
+                    return this.getSalesLedgerView().groups;
                 },
 
                 isSalesLedgerGroupOpen(key) {
@@ -4278,7 +4347,48 @@
                     };
                 },
 
-                exportToExcel() {
+                loadExternalScript(src, globalName) {
+                    if (typeof window === 'undefined' || typeof document === 'undefined') {
+                        return Promise.reject(new Error('Browser script loading is unavailable.'));
+                    }
+                    if (globalName && window[globalName]) {
+                        return Promise.resolve(window[globalName]);
+                    }
+
+                    const loaderId = `yolk-loader-${globalName || src}`;
+                    const existingScript = document.querySelector(`script[data-yolk-loader="${loaderId}"]`);
+                    if (existingScript) {
+                        if (existingScript.dataset.loaded === 'true') {
+                            return Promise.resolve(globalName ? window[globalName] : true);
+                        }
+                        return new Promise((resolve, reject) => {
+                            existingScript.addEventListener('load', () => {
+                                existingScript.dataset.loaded = 'true';
+                                resolve(globalName ? window[globalName] : true);
+                            }, { once: true });
+                            existingScript.addEventListener('error', () => reject(new Error(`Unable to load ${src}`)), { once: true });
+                        });
+                    }
+
+                    return new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.async = true;
+                        script.dataset.yolkLoader = loaderId;
+                        script.addEventListener('load', () => {
+                            script.dataset.loaded = 'true';
+                            resolve(globalName ? window[globalName] : true);
+                        }, { once: true });
+                        script.addEventListener('error', () => reject(new Error(`Unable to load ${src}`)), { once: true });
+                        document.head.appendChild(script);
+                    });
+                },
+
+                ensureXlsxLoaded() {
+                    return this.loadExternalScript('https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js', 'XLSX');
+                },
+
+                async exportToExcel() {
                     try {
                         if (!this.exportForm.startDate || !this.exportForm.endDate) {
                             alert('Please select both start and end dates');
@@ -4336,6 +4446,7 @@
 
                         console.log('Summary data:', summaryData);
 
+                        await this.ensureXlsxLoaded();
                         if (!window.XLSX) {
                             alert('XLSX library not loaded. Please refresh the page.');
                             return;
@@ -4374,9 +4485,36 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js').catch(error => {
-                    console.warn('Service worker registration failed:', error);
+                let refreshingForUpdate = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshingForUpdate) return;
+                    refreshingForUpdate = true;
+                    window.location.reload();
                 });
+
+                const activateWaitingWorker = registration => {
+                    if (registration.waiting) {
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                };
+
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => {
+                        registration.update().catch(() => {});
+                        activateWaitingWorker(registration);
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (!newWorker) return;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.warn('Service worker registration failed:', error);
+                    });
             });
         }
     </script>

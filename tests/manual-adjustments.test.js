@@ -537,6 +537,35 @@ test('sales ledger filters, searches, groups, and limits long sale lists', () =>
     assert.equal(app.isSalesLedgerGroupOpen('history'), true);
 });
 
+test('sales ledger helpers reuse filtered rows during one render pass', () => {
+    const app = loadEggApp();
+    app.sales = Array.from({ length: 75 }, (_, index) => ({
+        id: index + 1,
+        customer: `Customer ${index + 1}`,
+        orderDate: `2026-06-${String((index % 28) + 1).padStart(2, '0')}`,
+        date: `2026-06-${String((index % 28) + 1).padStart(2, '0')}`,
+        quantity: 1,
+        type: index % 3 === 0 ? 'Loaned' : 'Regular',
+        unitPrice: index % 3 === 0 ? 270 : 250,
+        paid: index % 3 !== 0,
+        payments: index % 3 === 1 ? [{ amount: 250, account: 'Cash', date: '2026-06-01' }] : []
+    }));
+
+    let filterChecks = 0;
+    const originalMatcher = app.saleMatchesSalesLedgerFilter.bind(app);
+    app.saleMatchesSalesLedgerFilter = sale => {
+        filterChecks += 1;
+        return originalMatcher(sale);
+    };
+
+    app.getFilteredSalesLedger();
+    app.getSalesLedgerVisibleSales();
+    app.getSalesLedgerHiddenCount();
+    app.getSalesLedgerGroups();
+
+    assert.equal(filterChecks, app.sales.length);
+});
+
 test('sales ledger renders search filters grouped rows and show more controls', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 
@@ -888,6 +917,15 @@ test('weekly report opens as a modern modal sheet', () => {
     assert.doesNotMatch(html, /fixed left-0 top-0 h-screen w-96/);
 });
 
+test('spreadsheet export library is lazy-loaded to keep startup fast', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.doesNotMatch(html, /<script src="https:\/\/unpkg\.com\/xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js"><\/script>/);
+    assert.match(html, /async exportToExcel\(\)/);
+    assert.match(html, /ensureXlsxLoaded\(\)/);
+    assert.match(html, /loadExternalScript\('https:\/\/unpkg\.com\/xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js', 'XLSX'\)/);
+});
+
 test('app shell defaults to light mode and keeps dark mode opt-in', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
     const app = loadEggApp(createStorage());
@@ -950,6 +988,15 @@ test('app shows a jumping HEAD loading screen on startup', () => {
     assert.match(html, /finishLoadingScreen\(\)/);
 });
 
+test('loading screen exits quickly enough for daily mobile use', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /loading-logo-bounce\s*\{[\s\S]*animation: yolkJump 0\.18s[\s\S]*5 forwards/);
+    assert.match(html, /}, 900\);/);
+    assert.match(html, /window\.setTimeout\(hideLoader, 1250\);/);
+    assert.doesNotMatch(html, /3480/);
+});
+
 test('app includes install files and registers the service worker', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -962,7 +1009,10 @@ test('app includes install files and registers the service worker', () => {
     assert.match(html, /<link rel="manifest" href="manifest\.json">/);
     assert.match(html, /<link rel="apple-touch-icon" href="YOLK\.\.png">/);
     assert.match(html, /navigator\.serviceWorker\.register\('service-worker\.js'\)/);
+    assert.match(html, /controllerchange/);
+    assert.match(html, /registration\.update\(\)/);
     assert.match(serviceWorker, /egg-inventory-cache-v/);
+    assert.match(serviceWorker, /SKIP_WAITING/);
     assert.match(serviceWorker, /sync-config\.js/);
     assert.match(serviceWorker, /event\.request\.mode === 'navigate'/);
     assert.match(serviceWorker, /fetch\(event\.request\)\.then\(response =>/);
