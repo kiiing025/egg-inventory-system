@@ -784,6 +784,71 @@ test('cash out moves wallet balance into cash on hand', () => {
     assert.equal(savedData.walletTransfers[0].amount, 250);
 });
 
+test('online cash totals stay separate from cash on hand and profit during cash out', () => {
+    const app = loadEggApp();
+    app.sales = [
+        {
+            id: 411,
+            customer: 'GCash Buyer',
+            quantity: 2,
+            unitPrice: 250,
+            type: 'Regular',
+            paid: true,
+            orderDate: '2026-06-12',
+            payments: [{ id: 1, date: '2026-06-12', amount: 500, account: 'GCash', note: '' }]
+        },
+        {
+            id: 412,
+            customer: 'Maya Buyer',
+            quantity: 1,
+            unitPrice: 270,
+            type: 'Loaned',
+            paid: false,
+            orderDate: '2026-06-12',
+            payments: [{ id: 2, date: '2026-06-13', amount: 120, account: 'Maya', note: 'half payment' }]
+        },
+        {
+            id: 413,
+            customer: 'Cash Buyer',
+            quantity: 1,
+            unitPrice: 250,
+            type: 'Regular',
+            paid: true,
+            orderDate: '2026-06-12',
+            payments: [{ id: 3, date: '2026-06-12', amount: 250, account: 'Cash', note: '' }]
+        }
+    ];
+
+    assert.equal(app.getCashOnHand(), 250);
+    assert.equal(app.getOnlineCashTotal(), 620);
+    assert.deepEqual(JSON.parse(JSON.stringify(app.getWalletBalanceRows())), [
+        { account: 'GCash', amount: 500, balance: 500 },
+        { account: 'Maya', amount: 120, balance: 120 }
+    ]);
+
+    const profitBeforeTransfer = app.getNetProfit();
+    assert.equal(app.openWalletTransferModal('GCash'), true);
+    app.walletTransferForm.amount = 300;
+    app.walletTransferForm.date = '2026-06-14';
+    app.walletTransferForm.note = 'Cashed out at sari-sari store';
+
+    assert.equal(app.saveWalletTransfer(), true);
+    assert.equal(app.getCashOnHand(), 550);
+    assert.equal(app.getOnlineCashTotal(), 320);
+    assert.equal(app.getWalletBalance('GCash'), 200);
+    assert.equal(app.getNetProfit(), profitBeforeTransfer);
+    assert.deepEqual(JSON.parse(JSON.stringify(app.getRecentWalletTransfers(1))), [
+        {
+            id: app.walletTransfers[0].id,
+            account: 'GCash',
+            amount: 300,
+            date: '2026-06-14',
+            dateDisplay: 'Jun 14',
+            note: 'Cashed out at sari-sari store'
+        }
+    ]);
+});
+
 test('cash payment adds to cash and completes loan when balance is paid', () => {
     const storage = createStorage();
     const app = loadEggApp(storage);
@@ -855,6 +920,19 @@ test('dashboard renders mobile ledger summary and quick actions', () => {
     assert.match(html, /@click="openReceiptModal\(\)"/);
     assert.match(html, /@click="currentPage = 'closing'; dailyClosingForm\.date = formatDateForInput\(\)"/);
     assert.match(html, /@click="currentPage = 'sync'"/);
+});
+
+test('dashboard renders a finance-style online wallet area with transfer history', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /data-cash-wallet-desk/);
+    assert.match(html, /data-online-cash-card/);
+    assert.match(html, /getOnlineCashTotal\(\)/);
+    assert.match(html, /data-wallet-card/);
+    assert.match(html, /wallet\.balance/);
+    assert.match(html, /data-wallet-transfer-history/);
+    assert.match(html, /getRecentWalletTransfers\(\)/);
+    assert.match(html, /Transfer to Cash/);
 });
 
 test('daily closing page and dashboard shortcut are rendered', () => {

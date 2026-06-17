@@ -218,6 +218,106 @@
             background: rgba(255, 255, 255, 0.07);
         }
 
+        .wallet-desk {
+            border: 1px solid rgba(32, 37, 31, 0.10);
+            background:
+                radial-gradient(circle at 8% 8%, rgba(211, 64, 54, 0.13), transparent 17rem),
+                radial-gradient(circle at 95% 10%, rgba(37, 99, 235, 0.11), transparent 16rem),
+                linear-gradient(135deg, rgba(251, 252, 248, 0.98), rgba(239, 243, 236, 0.94));
+            box-shadow: 0 22px 50px rgba(32, 37, 31, 0.09);
+        }
+
+        .dark .wallet-desk {
+            border-color: rgba(255, 255, 255, 0.10);
+            background:
+                radial-gradient(circle at 76% 12%, rgba(77, 93, 255, 0.36), transparent 15rem),
+                radial-gradient(circle at 18% 18%, rgba(211, 64, 54, 0.24), transparent 14rem),
+                linear-gradient(145deg, #0b0f14 0%, #111827 58%, #151523 100%);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+        }
+
+        .wallet-balance-card {
+            border: 1px solid rgba(32, 37, 31, 0.08);
+            background: rgba(255, 255, 255, 0.74);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.80), 0 16px 34px rgba(32, 37, 31, 0.08);
+        }
+
+        .dark .wallet-balance-card {
+            border-color: rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 18px 40px rgba(0, 0, 0, 0.30);
+        }
+
+        .finance-dashboard-shell {
+            border: 1px solid rgba(32, 37, 31, 0.08);
+            background:
+                radial-gradient(circle at 18% 4%, rgba(211, 64, 54, 0.12), transparent 17rem),
+                radial-gradient(circle at 86% 4%, rgba(82, 99, 255, 0.10), transparent 19rem),
+                linear-gradient(145deg, rgba(251, 252, 248, 0.98), rgba(237, 241, 232, 0.95));
+            box-shadow: 0 28px 70px rgba(32, 37, 31, 0.10);
+        }
+
+        .dark .finance-dashboard-shell {
+            border-color: rgba(255, 255, 255, 0.08);
+            background:
+                radial-gradient(circle at 72% 12%, rgba(89, 82, 255, 0.44), transparent 16rem),
+                radial-gradient(circle at 18% 10%, rgba(211, 64, 54, 0.20), transparent 15rem),
+                linear-gradient(145deg, #0c0d10 0%, #121214 58%, #15151e 100%);
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.40);
+        }
+
+        .finance-hero-card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background:
+                radial-gradient(circle at 82% 84%, rgba(82, 99, 255, 0.72), transparent 9rem),
+                linear-gradient(145deg, #20251f 0%, #151816 66%, #111312 100%);
+            color: #ffffff;
+            box-shadow: 0 24px 58px rgba(32, 37, 31, 0.22);
+        }
+
+        .dark .finance-hero-card {
+            background:
+                radial-gradient(circle at 84% 82%, rgba(85, 96, 255, 0.88), transparent 9rem),
+                linear-gradient(145deg, #141416 0%, #101012 62%, #0d0d0f 100%);
+            box-shadow: 0 24px 58px rgba(0, 0, 0, 0.42);
+        }
+
+        .finance-action-dot {
+            height: 3.6rem;
+            min-width: 3.6rem;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.14);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+
+        .finance-action-dot:hover {
+            background: rgba(255, 255, 255, 0.20);
+        }
+
+        .finance-soft-panel {
+            border: 1px solid rgba(32, 37, 31, 0.07);
+            background: rgba(255, 255, 255, 0.58);
+            box-shadow: 0 16px 38px rgba(32, 37, 31, 0.07);
+        }
+
+        .dark .finance-soft-panel {
+            border-color: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+        }
+
+        .finance-transaction-row {
+            background: rgba(255, 255, 255, 0.62);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+        }
+
+        .dark .finance-transaction-row {
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
         button:focus-visible,
         input:focus-visible,
         select:focus-visible,
@@ -324,111 +424,193 @@
     <main class="max-w-7xl mx-auto lg:ml-64 p-4 pb-28 lg:p-6 lg:pb-6 space-y-6">
         <section x-show="currentPage === 'dashboard'" class="space-y-6">
 
-        <div data-dashboard-hero data-ops-command-center class="ops-panel overflow-hidden rounded-[1.35rem]">
-            <div class="border-b border-[#d7ded2] bg-[#20251f] px-4 py-3 text-white dark:border-white/10">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-white/55">Operations desk</p>
-                        <h2 class="mt-1 text-2xl font-black leading-tight tracking-normal">Today's command center</h2>
+        <section data-dashboard-hero data-ops-command-center data-dashboard-wallets data-cash-wallet-desk class="finance-dashboard-shell overflow-hidden rounded-[2.25rem] p-4 text-[#20251f] dark:text-white">
+            <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.74fr)]">
+                <div class="finance-hero-card rounded-[2rem] p-4 sm:p-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-white p-1">
+                                <img src="HEAD.png" alt="YOLK" class="h-10 w-10 object-contain">
+                            </div>
+                            <div>
+                                <p class="text-sm font-black">YOLK Inventory</p>
+                                <p class="text-xs font-semibold text-white/55">Operations desk</p>
+                            </div>
+                        </div>
+                        <button @click="currentPage = 'sync'" class="yolk-action flex h-11 w-11 items-center justify-center rounded-full bg-white/12 text-white hover:bg-white/20" title="Open sync">
+                            <i data-lucide="bell" class="h-4 w-4"></i>
+                        </button>
                     </div>
-                    <div class="flex items-center gap-2 text-xs font-bold text-white/70">
-                        <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
-                        <span x-text="syncHealthLabel()"></span>
+
+                    <div class="mt-7">
+                        <p class="text-xs font-semibold text-white/55">Total balance</p>
+                        <p class="yolk-metric mt-2 text-4xl font-black leading-none sm:text-5xl" x-text="formatPHP(getCashOnHand() + getOnlineCashTotal())"></p>
+                        <p class="mt-2 text-xs font-semibold text-white/60">Physical cash plus online wallets. Transfers only move money between balances.</p>
+                    </div>
+
+                    <div data-dashboard-quick-actions class="mt-7 grid grid-cols-3 gap-3 sm:grid-cols-6">
+                        <button @click="openReceiptModal()" class="yolk-action flex flex-col items-center gap-2 text-xs font-bold text-white/75 hover:text-white">
+                            <span class="finance-action-dot flex items-center justify-center"><i data-lucide="receipt-text" class="h-5 w-5"></i></span>
+                            <span>Weekly Report</span>
+                        </button>
+                        <button @click="currentPage = 'closing'; dailyClosingForm.date = formatDateForInput()" class="yolk-action flex flex-col items-center gap-2 text-xs font-bold text-white/75 hover:text-white">
+                            <span class="finance-action-dot flex items-center justify-center"><i data-lucide="calendar-check" class="h-5 w-5"></i></span>
+                            <span>Close Day</span>
+                        </button>
+                        <button @click="currentPage = 'sales'" class="yolk-action flex flex-col items-center gap-2 text-xs font-bold text-white/75 hover:text-white">
+                            <span class="finance-action-dot flex items-center justify-center"><i data-lucide="shopping-bag" class="h-5 w-5"></i></span>
+                            <span>Sales</span>
+                        </button>
+                        <button @click="currentPage = 'expenses'" class="yolk-action flex flex-col items-center gap-2 text-xs font-bold text-white/75 hover:text-white">
+                            <span class="finance-action-dot flex items-center justify-center"><i data-lucide="receipt" class="h-5 w-5"></i></span>
+                            <span>Expense</span>
+                        </button>
+                        <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" class="yolk-action flex flex-col items-center gap-2 text-xs font-bold text-white/75 hover:text-white">
+                            <span class="finance-action-dot flex items-center justify-center"><i data-lucide="arrow-down-to-line" class="h-5 w-5"></i></span>
+                            <span>Cash Out</span>
+                        </button>
+                        <button @click="currentPage = 'sync'" class="yolk-action flex flex-col items-center gap-2 text-xs font-bold text-white/75 hover:text-white">
+                            <span class="finance-action-dot flex items-center justify-center"><i data-lucide="cloud" class="h-5 w-5"></i></span>
+                            <span>Sync</span>
+                        </button>
                     </div>
                 </div>
-            </div>
 
-            <div class="grid gap-4 p-4 xl:grid-cols-[1fr_320px]">
-                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div class="ops-kpi rounded-2xl p-4 sm:col-span-2">
+                <aside class="finance-soft-panel rounded-[2rem] p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-black">Cash exchange</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Online wallet to physical drawer.</p>
+                        </div>
+                        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#20251f] text-white dark:bg-white dark:text-slate-950">
+                            <i data-lucide="repeat-2" class="h-4 w-4"></i>
+                        </span>
+                    </div>
+
+                    <div data-online-cash-card class="mt-4 rounded-[1.6rem] bg-white/70 p-4 dark:bg-white/[0.07]">
                         <div class="flex items-center justify-between gap-3">
-                            <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Cash on hand</p>
-                            <button @click="openAdjustmentModal('cash')" class="yolk-action rounded-xl bg-[#20251f] px-3 py-1.5 text-[11px] font-black text-white hover:bg-[#343b33] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">Edit</button>
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-11 w-11 items-center justify-center rounded-full bg-[#d34036] text-white dark:bg-blue-500">
+                                    <i data-lucide="wallet-cards" class="h-5 w-5"></i>
+                                </span>
+                                <div>
+                                    <p class="text-sm font-black">Digital Wallet Balance</p>
+                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">GCash, PayPal, GoTyme, Maya</p>
+                                </div>
+                            </div>
+                            <p class="yolk-metric text-xl font-black text-[#d34036] dark:text-blue-200" x-text="formatPHP(getOnlineCashTotal())"></p>
                         </div>
-                        <p class="yolk-metric mt-3 text-4xl font-black leading-none text-[#20251f] dark:text-white" x-text="formatPHP(getCashOnHand())"></p>
-                        <p class="mt-2 text-xs font-semibold text-slate-500">Cash drawer only. Online wallets stay separate until cash-out.</p>
                     </div>
 
-                    <div class="ops-kpi rounded-2xl p-4">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Current stock</p>
-                            <button @click="openAdjustmentModal('stock')" class="yolk-action rounded-xl bg-[#d34036]/10 px-3 py-1.5 text-[11px] font-black text-[#d34036] hover:bg-[#d34036]/15">Edit</button>
+                    <div class="relative mx-auto my-3 flex h-9 w-9 items-center justify-center rounded-full bg-[#20251f] text-white shadow-lg dark:bg-white dark:text-slate-950">
+                        <i data-lucide="arrow-down" class="h-4 w-4"></i>
+                    </div>
+
+                    <div class="rounded-[1.6rem] bg-white/70 p-4 dark:bg-white/[0.07]">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white">
+                                    <i data-lucide="banknote" class="h-5 w-5"></i>
+                                </span>
+                                <div>
+                                    <p class="text-sm font-black">Physical Cash on Hand</p>
+                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Drawer balance</p>
+                                </div>
+                            </div>
+                            <p class="yolk-metric text-xl font-black text-[#20251f] dark:text-white" x-text="formatPHP(getCashOnHand())"></p>
                         </div>
-                        <p class="yolk-metric mt-3 text-3xl font-black text-[#20251f] dark:text-white" x-text="inventory"></p>
-                        <p class="mt-2 text-xs text-slate-500">eggs available</p>
                     </div>
 
-                    <div class="ops-kpi rounded-2xl p-4">
-                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Net profit</p>
-                        <p class="yolk-metric mt-3 text-3xl font-black text-emerald-600 dark:text-emerald-400" x-text="formatPHP(getNetProfit())"></p>
-                        <p class="mt-2 text-xs text-slate-500">revenue minus COGS</p>
-                    </div>
-                </div>
-
-                <aside data-ops-priority-rail class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                    <button @click="currentPage = 'customers'" class="ops-chip yolk-action rounded-2xl p-3 text-left">
-                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Receivable</p>
-                        <p class="yolk-metric mt-1 text-xl font-black text-amber-600 dark:text-amber-300" x-text="formatPHP(getOutstandingLoans())"></p>
-                    </button>
-                    <button @click="currentPage = 'closing'; dailyClosingForm.date = formatDateForInput()" class="ops-chip yolk-action rounded-2xl p-3 text-left">
-                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Daily close</p>
-                        <p class="mt-1 text-sm font-black text-[#20251f] dark:text-white" x-text="getTodayClosing() ? 'Closed today' : 'Needs review'"></p>
-                    </button>
-                    <button @click="currentPage = 'sync'" class="ops-chip yolk-action rounded-2xl p-3 text-left">
-                        <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Cloud sync</p>
-                        <p class="mt-1 text-sm font-black text-[#20251f] dark:text-white" x-text="syncHealthDetail()"></p>
+                    <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" :disabled="getOnlineCashTotal() <= 0" class="yolk-action mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-45">
+                        <i data-lucide="arrow-down-to-line" class="h-4 w-4"></i>
+                        Transfer to Cash
                     </button>
                 </aside>
             </div>
-        </div>
 
-        <div data-dashboard-wallets x-show="getWalletBalanceRows().length > 0" class="yolk-surface rounded-[1.75rem] p-4">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p class="text-sm font-black text-[#1f2421] dark:text-white">Online Wallets</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Not Cash on Hand until you cash out.</p>
-                </div>
-                <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" class="yolk-action inline-flex items-center justify-center gap-2 rounded-2xl bg-[#d34036] px-4 py-2 text-sm font-black text-white hover:bg-[#b8322b]">
-                    <i data-lucide="wallet-cards" class="h-4 w-4"></i>
-                    Cash Out
+            <div data-ops-priority-rail class="mt-4 grid gap-3 md:grid-cols-4">
+                <article class="ops-kpi finance-soft-panel rounded-[1.5rem] p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs font-black text-slate-500 dark:text-slate-400">Current stock</p>
+                        <button @click="openAdjustmentModal('stock')" class="yolk-action rounded-full bg-[#d34036]/10 px-3 py-1 text-[11px] font-black text-[#d34036] hover:bg-[#d34036]/15">Edit</button>
+                    </div>
+                    <p class="yolk-metric mt-2 text-2xl font-black" x-text="inventory + ' eggs'"></p>
+                </article>
+                <article class="ops-kpi finance-soft-panel rounded-[1.5rem] p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs font-black text-slate-500 dark:text-slate-400">Cash drawer</p>
+                        <button @click="openAdjustmentModal('cash')" class="yolk-action rounded-full bg-[#20251f] px-3 py-1 text-[11px] font-black text-white hover:bg-[#343b33] dark:bg-white dark:text-slate-950">Edit</button>
+                    </div>
+                    <p class="yolk-metric mt-2 text-2xl font-black" x-text="formatPHP(getCashOnHand())"></p>
+                </article>
+                <article class="ops-kpi finance-soft-panel rounded-[1.5rem] p-4">
+                    <p class="text-xs font-black text-slate-500 dark:text-slate-400">Net profit</p>
+                    <p class="yolk-metric mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-300" x-text="formatPHP(getNetProfit())"></p>
+                </article>
+                <button @click="currentPage = 'customers'" class="ops-chip finance-soft-panel yolk-action rounded-[1.5rem] p-4 text-left">
+                    <p class="text-xs font-black text-slate-500 dark:text-slate-400">Receivable</p>
+                    <p class="yolk-metric mt-2 text-2xl font-black text-amber-600 dark:text-amber-300" x-text="formatPHP(getOutstandingLoans())"></p>
                 </button>
             </div>
-            <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <template x-for="wallet in getWalletBalanceRows()" :key="wallet.account">
-                    <div class="rounded-2xl bg-[#f6f3ee] p-3 dark:bg-white/5">
-                        <p class="text-xs font-black text-[#1f2421] dark:text-white" x-text="wallet.account"></p>
-                        <p class="yolk-metric mt-1 text-lg font-black text-[#d34036]" x-text="formatPHP(wallet.balance)"></p>
-                    </div>
-                </template>
-            </div>
-        </div>
 
-        <div data-dashboard-quick-actions class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <button @click="openReceiptModal()" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
-                <i data-lucide="receipt-text" class="h-5 w-5 text-[#d34036]"></i>
-                <span class="text-sm font-black">Weekly Report</span>
-            </button>
-            <button @click="currentPage = 'closing'; dailyClosingForm.date = formatDateForInput()" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
-                <i data-lucide="calendar-check" class="h-5 w-5 text-[#d34036]"></i>
-                <span class="text-sm font-black">Close Day</span>
-            </button>
-            <button @click="currentPage = 'sales'" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
-                <i data-lucide="shopping-bag" class="h-5 w-5 text-[#d34036]"></i>
-                <span class="text-sm font-black">Sales</span>
-            </button>
-            <button @click="currentPage = 'expenses'" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
-                <i data-lucide="receipt" class="h-5 w-5 text-[#d34036]"></i>
-                <span class="text-sm font-black">Expense</span>
-            </button>
-            <button @click="openWalletTransferModal(getWalletBalanceRows()[0]?.account || 'GCash')" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
-                <i data-lucide="wallet-cards" class="h-5 w-5 text-[#d34036]"></i>
-                <span class="text-sm font-black">Cash Out</span>
-            </button>
-            <button @click="currentPage = 'sync'" class="yolk-action yolk-surface flex min-h-[72px] flex-col items-start justify-between rounded-3xl p-4 text-left">
-                <i data-lucide="cloud" class="h-5 w-5 text-[#d34036]"></i>
-                <span class="text-sm font-black">Sync</span>
-            </button>
-        </div>
+            <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.55fr)]">
+                <div class="finance-soft-panel rounded-[1.75rem] p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-black">Wallet balances</p>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Separated by payment method.</p>
+                        </div>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400" x-text="getWalletBalanceRows().length ? getWalletBalanceRows().length + ' active' : 'No online cash yet'"></p>
+                    </div>
+                    <div class="mt-3 flex gap-3 overflow-x-auto pb-1">
+                        <template x-for="wallet in getWalletBalanceRows()" :key="wallet.account">
+                            <button data-wallet-card @click="openWalletTransferModal(wallet.account)" class="yolk-action min-w-[160px] rounded-[1.5rem] bg-white/70 p-4 text-left hover:-translate-y-0.5 hover:bg-white dark:bg-white/[0.07] dark:hover:bg-white/[0.10]">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#20251f] text-white dark:bg-white dark:text-slate-950">
+                                    <i data-lucide="credit-card" class="h-4 w-4"></i>
+                                </span>
+                                <p class="mt-4 text-sm font-black" x-text="wallet.account"></p>
+                                <p class="yolk-metric mt-1 text-2xl font-black text-[#d34036] dark:text-blue-200" x-text="formatPHP(wallet.balance)"></p>
+                            </button>
+                        </template>
+                        <div x-show="getWalletBalanceRows().length === 0" class="min-w-[220px] rounded-[1.5rem] border border-dashed border-slate-300 p-4 text-sm font-semibold text-slate-500 dark:border-white/15 dark:text-slate-400">
+                            Online payments will appear here after you choose a wallet on a sale payment.
+                        </div>
+                    </div>
+                </div>
+
+                <aside data-wallet-transfer-history class="finance-soft-panel rounded-[1.75rem] p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-black">Recent cash-outs</p>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Wallet transfers into cash.</p>
+                        </div>
+                        <span class="rounded-full bg-slate-900/5 px-2.5 py-1 text-[11px] font-black text-slate-500 dark:bg-white/10 dark:text-slate-300" x-text="walletTransfers.length"></span>
+                    </div>
+                    <div class="mt-4 space-y-2">
+                        <template x-for="transfer in getRecentWalletTransfers()" :key="transfer.id">
+                            <div class="finance-transaction-row rounded-[1.4rem] p-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#20251f] text-white dark:bg-white dark:text-slate-950">
+                                            <i data-lucide="repeat-2" class="h-4 w-4"></i>
+                                        </span>
+                                        <div>
+                                            <p class="text-sm font-black" x-text="transfer.account"></p>
+                                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400" x-text="transfer.dateDisplay || formatDisplayDate(transfer.date)"></p>
+                                        </div>
+                                    </div>
+                                    <p class="yolk-metric text-sm font-black text-emerald-600 dark:text-emerald-300" x-text="'+' + formatPHP(transfer.amount)"></p>
+                                </div>
+                                <p x-show="transfer.note" class="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400" x-text="transfer.note"></p>
+                            </div>
+                        </template>
+                        <div x-show="getRecentWalletTransfers().length === 0" class="rounded-[1.4rem] border border-dashed border-slate-300 p-4 text-sm font-semibold text-slate-500 dark:border-white/15 dark:text-slate-400">
+                            No cash-outs recorded yet.
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
 
         <div data-ops-work-queue class="ops-panel rounded-[1.35rem] p-4">
             <div class="flex flex-col gap-2 border-b border-[#d7ded2] pb-3 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
@@ -3362,12 +3544,32 @@
                     return this.getWalletBalances()[this.normalizePaymentAccount(account)] || 0;
                 },
 
+                getOnlineCashTotal() {
+                    return Object.values(this.getWalletBalances())
+                        .reduce((sum, amount) => sum + Number(amount || 0), 0);
+                },
+
                 getWalletBalanceRows() {
                     const balances = this.getWalletBalances();
                     return Object.entries(balances)
                         .filter(([, amount]) => Math.abs(Number(amount || 0)) > 0.001)
-                        .map(([account, amount]) => ({ account, amount }))
+                        .map(([account, amount]) => ({
+                            account,
+                            amount,
+                            balance: amount
+                        }))
                         .sort((a, b) => a.account.localeCompare(b.account));
+                },
+
+                getRecentWalletTransfers(limit = 5) {
+                    return [...this.walletTransfers]
+                        .sort((a, b) => {
+                            const dateA = new Date(`${this.getDateInputValue(a.date) || '1970-01-01'}T00:00:00`).getTime();
+                            const dateB = new Date(`${this.getDateInputValue(b.date) || '1970-01-01'}T00:00:00`).getTime();
+                            if (dateA !== dateB) return dateB - dateA;
+                            return Number(b.id || 0) - Number(a.id || 0);
+                        })
+                        .slice(0, limit);
                 },
 
                 getCashOnHand() {
