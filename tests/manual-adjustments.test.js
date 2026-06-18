@@ -161,6 +161,99 @@ test('saved zero inventory loads as zero', () => {
     assert.equal(app.inventory, 0);
 });
 
+test('egg catalog adds sizes and keeps old sale prices when prices change', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 100;
+    app.ensureEggCatalog();
+
+    assert.equal(app.getEggTypeStock('Large'), 100);
+    assert.equal(app.getDefaultUnitPrice('Regular', 'Large'), 250);
+
+    app.openEggTypeForm();
+    app.eggTypeForm.name = 'Medium';
+    app.eggTypeForm.regularPrice = 220;
+    app.eggTypeForm.loanPrice = 240;
+    app.eggTypeForm.unitCost = 160;
+    app.eggTypeForm.stock = 30;
+    app.eggTypeForm.active = true;
+
+    assert.equal(app.saveEggType(), true);
+    assert.equal(app.getEggTypeStock('Medium'), 30);
+    assert.equal(app.inventory, 130);
+
+    app.saleForm.customer = 'Medium Buyer';
+    app.saleForm.eggType = 'Medium';
+    app.saleForm.quantity = 2;
+    app.saleForm.type = 'Regular';
+    app.saleForm.orderDate = '2026-06-17';
+    app.saleForm.paymentAccount = 'Cash';
+    app.updateSalePrice();
+
+    assert.equal(app.saleForm.unitPrice, 220);
+    app.submitSale();
+    assert.equal(app.sales[0].eggType, 'Medium');
+    assert.equal(app.sales[0].unitPrice, 220);
+    assert.equal(app.getEggTypeStock('Medium'), 28);
+    assert.equal(app.inventory, 128);
+
+    app.openEggTypeForm('Medium');
+    app.eggTypeForm.regularPrice = 235;
+    assert.equal(app.saveEggType(), true);
+
+    assert.equal(app.sales[0].unitPrice, 220);
+    assert.equal(app.getEggTypeByName('Medium').regularPrice, 235);
+    assert.equal(app.getEggTypeByName('Medium').priceHistory.length, 1);
+    assert.equal(app.getEggTypeByName('Medium').priceHistory[0].regularPrice, 220);
+
+    app.saleForm.customer = 'Future Medium Buyer';
+    app.saleForm.eggType = 'Medium';
+    app.saleForm.quantity = 1;
+    app.saleForm.type = 'Regular';
+    app.saleForm.orderDate = '2026-06-18';
+    app.updateSalePrice();
+
+    assert.equal(app.saleForm.unitPrice, 235);
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(savedData.eggTypes.find(type => type.name === 'Medium').regularPrice, 235);
+});
+
+test('restocking can target a specific egg size and uses that size cost', () => {
+    const app = loadEggApp();
+    app.inventory = 0;
+    app.eggTypes = [
+        { id: 'large', name: 'Large', regularPrice: 250, loanPrice: 270, unitCost: 180, stock: 0, active: true, priceHistory: [] },
+        { id: 'xl', name: 'XL', regularPrice: 285, loanPrice: 305, unitCost: 210, stock: 5, active: true, priceHistory: [] }
+    ];
+    app.syncInventoryFromEggTypes();
+
+    app.restockForm.eggType = 'XL';
+    app.restockForm.quantity = 4;
+    app.restockForm.unitCost = '';
+    app.syncRestockCost();
+
+    assert.equal(app.restockForm.unitCost, 210);
+    app.submitRestock();
+
+    assert.equal(app.getEggTypeStock('XL'), 9);
+    assert.equal(app.inventory, 9);
+    assert.equal(app.expenses[0].amount, 840);
+    assert.match(app.expenses[0].notes, /XL/);
+});
+
+test('product catalog controls are rendered for sale and restock sizes', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /Product Catalog/);
+    assert.match(html, /x-model="saleForm\.eggType"/);
+    assert.match(html, /x-model="restockForm\.eggType"/);
+    assert.match(html, /x-model="eggTypeForm\.name"/);
+    assert.match(html, /x-model\.number="eggTypeForm\.regularPrice"/);
+    assert.match(html, /@click="openEggTypeForm\(\)"/);
+    assert.match(html, /@click="saveEggType\(\)"/);
+});
+
 test('expense category field is editable with built-in suggestions', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 

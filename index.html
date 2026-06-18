@@ -688,6 +688,11 @@
                     <div class="space-y-3 flex-1">
                         <input type="text" placeholder="Customer Name" x-model="saleForm.customer" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
                         <input type="date" x-model="saleForm.orderDate" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <select x-model="saleForm.eggType" @change="updateSalePrice()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <template x-for="eggType in getActiveEggTypes()" :key="eggType.id">
+                                <option :value="eggType.name" x-text="eggType.name + ' - ' + eggType.stock + ' eggs'"></option>
+                            </template>
+                        </select>
                         <select x-model="saleForm.type" @change="updateSalePrice()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
                             <option>Regular</option>
                             <option>Loaned</option>
@@ -719,6 +724,11 @@
                 </h2>
                 <div class="space-y-3 flex-1 flex flex-col">
                     <div class="space-y-3 flex-1">
+                        <select x-model="restockForm.eggType" @change="syncRestockCost()" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <template x-for="eggType in getActiveEggTypes()" :key="eggType.id">
+                                <option :value="eggType.name" x-text="eggType.name + ' - cost ' + formatPHP(eggType.unitCost)"></option>
+                            </template>
+                        </select>
                         <input type="number" placeholder="Quantity to Buy" x-model.number="restockForm.quantity" min="1" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <input type="number" placeholder="Cost per Unit" x-model.number="restockForm.unitCost" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
@@ -761,6 +771,56 @@
             </div>
 
         </div>
+
+        <section data-product-catalog class="ops-panel rounded-[1.35rem] p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.18em] text-[#d34036]">Product Catalog</p>
+                    <h2 class="mt-1 text-lg font-black text-[#20251f] dark:text-white">Egg sizes, prices, and stock</h2>
+                    <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Change prices here for future sales. Existing order history keeps the price used when it was recorded.</p>
+                </div>
+                <button @click="openEggTypeForm()" class="yolk-action inline-flex items-center justify-center gap-2 rounded-2xl bg-[#20251f] px-4 py-2.5 text-sm font-black text-white hover:bg-[#343b33] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    Add Size
+                </button>
+            </div>
+
+            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <template x-for="eggType in eggTypes" :key="eggType.id">
+                    <article class="rounded-[1.35rem] bg-white/75 p-4 ring-1 ring-slate-900/5 dark:bg-white/[0.06] dark:ring-white/10">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-base font-black text-[#20251f] dark:text-white" x-text="eggType.name"></p>
+                                <p class="mt-1 text-xs font-bold" :class="eggType.active !== false ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400'" x-text="eggType.active !== false ? 'Active' : 'Inactive'"></p>
+                            </div>
+                            <button @click="openEggTypeForm(eggType.name)" class="yolk-action rounded-full bg-[#d34036]/10 px-3 py-1 text-[11px] font-black text-[#d34036] hover:bg-[#d34036]/15">Edit</button>
+                        </div>
+                        <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
+                            <div class="rounded-2xl bg-[#f6f3ee] p-3 dark:bg-white/[0.05]">
+                                <p class="font-bold text-slate-500 dark:text-slate-400">Stock</p>
+                                <p class="yolk-metric mt-1 text-lg font-black" x-text="eggType.stock"></p>
+                            </div>
+                            <div class="rounded-2xl bg-[#f6f3ee] p-3 dark:bg-white/[0.05]">
+                                <p class="font-bold text-slate-500 dark:text-slate-400">Cost</p>
+                                <p class="yolk-metric mt-1 text-lg font-black" x-text="formatPHP(eggType.unitCost)"></p>
+                            </div>
+                            <div class="rounded-2xl bg-[#f6f3ee] p-3 dark:bg-white/[0.05]">
+                                <p class="font-bold text-slate-500 dark:text-slate-400">Regular</p>
+                                <p class="yolk-metric mt-1 text-lg font-black text-emerald-600 dark:text-emerald-300" x-text="formatPHP(eggType.regularPrice)"></p>
+                            </div>
+                            <div class="rounded-2xl bg-[#f6f3ee] p-3 dark:bg-white/[0.05]">
+                                <p class="font-bold text-slate-500 dark:text-slate-400">Loaned</p>
+                                <p class="yolk-metric mt-1 text-lg font-black text-amber-600 dark:text-amber-300" x-text="formatPHP(eggType.loanPrice)"></p>
+                            </div>
+                        </div>
+                        <p class="mt-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                            <span x-text="eggType.priceHistory?.length || 0"></span>
+                            price change records
+                        </p>
+                    </article>
+                </template>
+            </div>
+        </section>
 
         </section>
 
@@ -1625,6 +1685,52 @@
         </button>
     </div>
 
+    <!-- EGG TYPE CATALOG MODAL -->
+    <div x-show="eggTypeForm.open" @click="closeEggTypeForm()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
+
+    <div x-show="eggTypeForm.open" class="fixed inset-x-4 top-10 mx-auto max-w-lg rounded-2xl bg-white dark:bg-slate-900 shadow-2xl z-50 border border-slate-200 dark:border-slate-700 overflow-hidden" style="display: none;" x-transition>
+        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
+            <h3 class="font-black text-slate-900 dark:text-white" x-text="eggTypeForm.originalName ? 'Edit Egg Size' : 'Add Egg Size'"></h3>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Prices apply to new sales only. Existing order history stays unchanged.</p>
+        </div>
+        <div class="p-5 space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Size name</label>
+                <input type="text" x-model="eggTypeForm.name" placeholder="Small, Medium, Large, XL..." class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Current stock</label>
+                    <input type="number" min="0" step="1" x-model.number="eggTypeForm.stock" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Restock cost</label>
+                    <input type="number" min="0" step="0.01" x-model.number="eggTypeForm.unitCost" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Regular price</label>
+                    <input type="number" min="0" step="0.01" x-model.number="eggTypeForm.regularPrice" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Loaned price</label>
+                    <input type="number" min="0" step="0.01" x-model.number="eggTypeForm.loanPrice" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d34036]">
+                </div>
+            </div>
+            <label class="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <span>Active in sale/restock menus</span>
+                <input type="checkbox" x-model="eggTypeForm.active" class="h-4 w-4 rounded border-slate-300 text-[#d34036] focus:ring-[#d34036]">
+            </label>
+        </div>
+        <div class="flex gap-3 px-5 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700">
+            <button @click="closeEggTypeForm()" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold transition-colors">
+                Cancel
+            </button>
+            <button @click="saveEggType()" class="flex-1 px-4 py-2 rounded-lg bg-[#d34036] hover:bg-[#b8322b] text-white font-semibold transition-colors">
+                Save Size
+            </button>
+        </div>
+    </div>
+
     <!-- ADJUSTMENT MODAL -->
     <div x-show="adjustmentModal.open" @click="closeAdjustmentModal()" class="fixed inset-0 bg-black/40 z-40" style="display: none;"></div>
 
@@ -2051,6 +2157,7 @@
                 stockAdjustments: [],
                 walletTransfers: [],
                 dailyClosings: [],
+                eggTypes: [],
                 currentPage: 'dashboard',
                 currentTab: 'sales',
                 salesLedgerSearch: '',
@@ -2087,14 +2194,26 @@
                 saleForm: {
                     customer: '',
                     orderDate: '',
+                    eggType: 'Large',
                     quantity: 1,
                     type: 'Regular',
                     unitPrice: 250,
                     paymentAccount: 'Cash'
                 },
                 restockForm: {
+                    eggType: 'Large',
                     quantity: 100,
                     unitCost: 180
+                },
+                eggTypeForm: {
+                    open: false,
+                    originalName: '',
+                    name: '',
+                    regularPrice: 250,
+                    loanPrice: 270,
+                    unitCost: 180,
+                    stock: 0,
+                    active: true
                 },
                 expenseForm: {
                     category: 'Transportation',
@@ -2205,6 +2324,7 @@
                         const savedData = JSON.parse(localStorage.getItem('egg_app_data'));
                         this.applyPersistedState(savedData);
                     }
+                    this.ensureEggCatalog();
                     this.importHistoricalAprilSales();
                     const savedTheme = localStorage.getItem('egg_dark_mode');
                     this.darkMode = savedTheme === 'true';
@@ -2250,6 +2370,7 @@
                         stockAdjustments: this.stockAdjustments,
                         walletTransfers: this.walletTransfers,
                         dailyClosings: this.dailyClosings,
+                        eggTypes: this.eggTypes,
                         config: this.config
                     };
                 },
@@ -2263,7 +2384,9 @@
                     this.stockAdjustments = Array.isArray(savedData.stockAdjustments) ? savedData.stockAdjustments : [];
                     this.walletTransfers = Array.isArray(savedData.walletTransfers) ? savedData.walletTransfers : [];
                     this.dailyClosings = Array.isArray(savedData.dailyClosings) ? savedData.dailyClosings : [];
+                    this.eggTypes = Array.isArray(savedData.eggTypes) ? savedData.eggTypes : [];
                     if (savedData.config) this.config = savedData.config;
+                    this.ensureEggCatalog();
                     this.normalizeHistoricalAprilSales();
                     return true;
                 },
@@ -2483,7 +2606,7 @@
 
                 hasBackupBusinessData(data) {
                     if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
-                    return ['inventory', 'sales', 'expenses', 'cashAdjustments', 'stockAdjustments', 'walletTransfers', 'dailyClosings', 'config']
+                    return ['inventory', 'sales', 'expenses', 'cashAdjustments', 'stockAdjustments', 'walletTransfers', 'dailyClosings', 'eggTypes', 'config']
                         .some(key => Object.prototype.hasOwnProperty.call(data, key));
                 },
 
@@ -2496,6 +2619,7 @@
                         stockAdjustments: Array.isArray(data.stockAdjustments) ? data.stockAdjustments : [],
                         walletTransfers: Array.isArray(data.walletTransfers) ? data.walletTransfers : [],
                         dailyClosings: Array.isArray(data.dailyClosings) ? data.dailyClosings : [],
+                        eggTypes: Array.isArray(data.eggTypes) ? data.eggTypes : [],
                         config: data.config && typeof data.config === 'object' ? {
                             ...this.config,
                             ...data.config
@@ -3189,10 +3313,198 @@
                     return labels[this.currentPage] || 'Today overview';
                 },
 
+                normalizeEggTypeName(name) {
+                    const value = String(name || '').trim().replace(/\s+/g, ' ');
+                    return value || 'Large';
+                },
+
+                createEggTypeId(name) {
+                    return this.normalizeEggTypeName(name)
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-+|-+$/g, '') || 'large';
+                },
+
+                createEggTypeRecord(data = {}) {
+                    const name = this.normalizeEggTypeName(data.name);
+                    const regularPrice = Number.isFinite(Number(data.regularPrice)) ? Number(data.regularPrice) : Number(this.config.regularPrice || 250);
+                    const loanPrice = Number.isFinite(Number(data.loanPrice)) ? Number(data.loanPrice) : Number(this.config.loanPrice || 270);
+                    const unitCost = Number.isFinite(Number(data.unitCost)) ? Number(data.unitCost) : Number(this.restockForm?.unitCost || 180);
+                    const stock = Number.isFinite(Number(data.stock)) ? Number(data.stock) : 0;
+                    return {
+                        id: data.id || this.createEggTypeId(name),
+                        name,
+                        regularPrice,
+                        loanPrice,
+                        unitCost,
+                        stock,
+                        active: data.active !== false,
+                        priceHistory: Array.isArray(data.priceHistory) ? data.priceHistory : []
+                    };
+                },
+
+                ensureEggCatalog() {
+                    if (!Array.isArray(this.eggTypes)) this.eggTypes = [];
+                    this.eggTypes = this.eggTypes
+                        .filter(Boolean)
+                        .map(type => this.createEggTypeRecord(type));
+
+                    if (this.eggTypes.length === 0) {
+                        this.eggTypes = [this.createEggTypeRecord({
+                            name: 'Large',
+                            regularPrice: this.config.regularPrice,
+                            loanPrice: this.config.loanPrice,
+                            unitCost: this.restockForm.unitCost,
+                            stock: Number(this.inventory || 0),
+                            active: true
+                        })];
+                    }
+
+                    if (!this.saleForm.eggType) this.saleForm.eggType = this.eggTypes[0].name;
+                    if (!this.restockForm.eggType) this.restockForm.eggType = this.eggTypes[0].name;
+                    this.syncInventoryFromEggTypes();
+                    return this.eggTypes;
+                },
+
+                syncInventoryFromEggTypes() {
+                    if (!Array.isArray(this.eggTypes) || this.eggTypes.length === 0) return this.inventory;
+                    this.inventory = this.eggTypes.reduce((sum, type) => sum + Number(type.stock || 0), 0);
+                    return this.inventory;
+                },
+
+                getEggTypeByName(name) {
+                    this.ensureEggCatalog();
+                    const normalizedName = this.normalizeEggTypeName(name).toLowerCase();
+                    return this.eggTypes.find(type => this.normalizeEggTypeName(type.name).toLowerCase() === normalizedName) || this.eggTypes[0];
+                },
+
+                getActiveEggTypes() {
+                    this.ensureEggCatalog();
+                    return this.eggTypes.filter(type => type.active !== false);
+                },
+
+                getEggTypeStock(name) {
+                    const eggType = this.getEggTypeByName(name);
+                    return Number(eggType?.stock || 0);
+                },
+
+                adjustEggTypeStock(name, difference) {
+                    const eggType = this.getEggTypeByName(name);
+                    if (!eggType) return false;
+                    const nextStock = Number(eggType.stock || 0) + Number(difference || 0);
+                    eggType.stock = Math.max(0, nextStock);
+                    this.syncInventoryFromEggTypes();
+                    return true;
+                },
+
+                getEggTypeFormDefaults(name = '') {
+                    const existing = name ? this.getEggTypeByName(name) : null;
+                    return {
+                        open: false,
+                        originalName: existing ? existing.name : '',
+                        name: existing ? existing.name : '',
+                        regularPrice: existing ? existing.regularPrice : this.config.regularPrice,
+                        loanPrice: existing ? existing.loanPrice : this.config.loanPrice,
+                        unitCost: existing ? existing.unitCost : this.restockForm.unitCost,
+                        stock: existing ? existing.stock : 0,
+                        active: existing ? existing.active !== false : true
+                    };
+                },
+
+                openEggTypeForm(name = '') {
+                    this.eggTypeForm = {
+                        ...this.getEggTypeFormDefaults(name),
+                        open: true
+                    };
+                    if (typeof window !== 'undefined' && window.setTimeout) {
+                        window.setTimeout(() => this.renderIcons(), 0);
+                    }
+                    return true;
+                },
+
+                closeEggTypeForm() {
+                    this.eggTypeForm = this.getEggTypeFormDefaults();
+                },
+
+                saveEggType() {
+                    const name = this.normalizeEggTypeName(this.eggTypeForm.name);
+                    const regularPrice = Number(this.eggTypeForm.regularPrice);
+                    const loanPrice = Number(this.eggTypeForm.loanPrice);
+                    const unitCost = Number(this.eggTypeForm.unitCost);
+                    const stock = Number(this.eggTypeForm.stock);
+                    if (!name || !Number.isFinite(regularPrice) || regularPrice < 0 ||
+                        !Number.isFinite(loanPrice) || loanPrice < 0 ||
+                        !Number.isFinite(unitCost) || unitCost < 0 ||
+                        !Number.isFinite(stock) || stock < 0) {
+                        alert('Please enter valid size, price, cost, and stock values.');
+                        return false;
+                    }
+
+                    this.ensureEggCatalog();
+                    const originalName = this.normalizeEggTypeName(this.eggTypeForm.originalName || name);
+                    const existing = this.eggTypes.find(type =>
+                        this.normalizeEggTypeName(type.name).toLowerCase() === originalName.toLowerCase() ||
+                        this.normalizeEggTypeName(type.name).toLowerCase() === name.toLowerCase()
+                    );
+                    const now = new Date().toISOString();
+
+                    if (existing) {
+                        const priceChanged = Number(existing.regularPrice) !== regularPrice ||
+                            Number(existing.loanPrice) !== loanPrice ||
+                            Number(existing.unitCost) !== unitCost;
+                        if (priceChanged) {
+                            existing.priceHistory = Array.isArray(existing.priceHistory) ? existing.priceHistory : [];
+                            existing.priceHistory.unshift({
+                                changedAt: now,
+                                regularPrice: Number(existing.regularPrice || 0),
+                                loanPrice: Number(existing.loanPrice || 0),
+                                unitCost: Number(existing.unitCost || 0)
+                            });
+                        }
+                        existing.name = name;
+                        existing.id = existing.id || this.createEggTypeId(name);
+                        existing.regularPrice = regularPrice;
+                        existing.loanPrice = loanPrice;
+                        existing.unitCost = unitCost;
+                        existing.stock = stock;
+                        existing.active = this.eggTypeForm.active !== false;
+                    } else {
+                        this.eggTypes.push(this.createEggTypeRecord({
+                            name,
+                            regularPrice,
+                            loanPrice,
+                            unitCost,
+                            stock,
+                            active: this.eggTypeForm.active !== false,
+                            priceHistory: []
+                        }));
+                    }
+
+                    this.syncInventoryFromEggTypes();
+                    this.saleForm.eggType = this.getEggTypeByName(this.saleForm.eggType)?.name || name;
+                    this.restockForm.eggType = this.getEggTypeByName(this.restockForm.eggType)?.name || name;
+                    this.updateSalePrice();
+                    this.syncRestockCost();
+                    this.persistState();
+                    this.closeEggTypeForm();
+                    return true;
+                },
+
+                getDefaultUnitPrice(type = 'Regular', eggTypeName = this.saleForm.eggType) {
+                    const eggType = this.getEggTypeByName(eggTypeName);
+                    return type === 'Loaned' ? Number(eggType.loanPrice || this.config.loanPrice) : Number(eggType.regularPrice || this.config.regularPrice);
+                },
+
                 updateSalePrice() {
-                    this.saleForm.unitPrice = this.saleForm.type === 'Regular' ?
-                        this.config.regularPrice :
-                        this.config.loanPrice;
+                    this.saleForm.unitPrice = this.getDefaultUnitPrice(this.saleForm.type, this.saleForm.eggType);
+                },
+
+                syncRestockCost() {
+                    const eggType = this.getEggTypeByName(this.restockForm.eggType);
+                    if (eggType && (this.restockForm.unitCost === '' || this.restockForm.unitCost === null || Number(this.restockForm.unitCost) !== Number(eggType.unitCost))) {
+                        this.restockForm.unitCost = Number(eggType.unitCost || 0);
+                    }
+                    return this.restockForm.unitCost;
                 },
 
                 normalizePaymentAccount(account) {
@@ -3649,7 +3961,7 @@
                             difference,
                             note
                         });
-                        this.inventory = newValue;
+                        this.adjustEggTypeStock('Large', difference);
                     }
 
                     this.persistState();
@@ -3956,10 +4268,6 @@
                     this.selectedCustomerKey = '';
                     this.persistState();
                     return true;
-                },
-
-                getDefaultUnitPrice(type) {
-                    return type === 'Loaned' ? this.config.loanPrice : this.config.regularPrice;
                 },
 
                 normalizePaymentMethod(method) {
@@ -4305,9 +4613,11 @@
                 },
 
                 submitSale() {
-                    if (this.inventory < this.saleForm.quantity) {
+                    this.ensureEggCatalog();
+                    const eggTypeName = this.normalizeEggTypeName(this.saleForm.eggType);
+                    if (this.getEggTypeStock(eggTypeName) < this.saleForm.quantity) {
                         alert("Transaction Failure: Insufficient Egg Stock Available!");
-                        return;
+                        return false;
                     }
                     const orderDate = this.saleForm.orderDate || this.formatDateForInput();
                     const orderDateDisplay = this.formatDisplayDate(orderDate);
@@ -4324,6 +4634,7 @@
                         paidDateDisplay: isPaid ? orderDateDisplay : '',
                         customer: this.saleForm.customer,
                         quantity: this.saleForm.quantity,
+                        eggType: eggTypeName,
                         type: this.saleForm.type,
                         unitPrice: this.saleForm.unitPrice,
                         paid: isPaid,
@@ -4337,16 +4648,28 @@
                             note: ''
                         }] : []
                     });
-                    this.inventory -= this.saleForm.quantity;
+                    this.adjustEggTypeStock(eggTypeName, -Number(this.saleForm.quantity || 0));
                     this.persistState();
                     this.saleForm.customer = '';
                     this.saleForm.orderDate = this.formatDateForInput();
+                    this.saleForm.eggType = this.getEggTypeByName(eggTypeName).name;
                     this.saleForm.quantity = 1;
                     this.saleForm.paymentAccount = 'Cash';
                     this.updateSalePrice();
+                    return true;
                 },
 
                 submitRestock() {
+                    this.ensureEggCatalog();
+                    const eggTypeName = this.normalizeEggTypeName(this.restockForm.eggType);
+                    const eggType = this.getEggTypeByName(eggTypeName);
+                    const quantity = Number(this.restockForm.quantity || 0);
+                    const unitCost = Number(this.restockForm.unitCost === '' || this.restockForm.unitCost === null ? eggType.unitCost : this.restockForm.unitCost);
+                    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitCost) || unitCost < 0) {
+                        alert('Please enter a valid restock quantity and cost.');
+                        return false;
+                    }
+                    this.restockForm.unitCost = unitCost;
                     const cost = this.restockForm.quantity * this.restockForm.unitCost;
                     this.expenses.unshift({
                         id: Date.now(),
@@ -4356,10 +4679,11 @@
                         }),
                         category: 'Restocking Cost',
                         amount: cost,
-                        notes: `Ingested +${this.restockForm.quantity} units into active floor stock.`
+                        notes: `Ingested +${quantity} ${eggType.name} eggs into active floor stock.`
                     });
-                    this.inventory += this.restockForm.quantity;
+                    this.adjustEggTypeStock(eggType.name, quantity);
                     this.persistState();
+                    return true;
                 },
 
                 submitExpense() {
@@ -4400,7 +4724,7 @@
                         ? `Remove history record for "${sale.customer}" (${sale.quantity} eggs)? Current stock will not change.`
                         : `Remove sale for "${sale.customer}" (${sale.quantity} eggs)? This will restore the quantity back to stock.`;
                     if (!confirm(message)) return;
-                    if (!isHistoryOnly) this.inventory += sale.quantity;
+                    if (!isHistoryOnly) this.adjustEggTypeStock(sale.eggType || 'Large', Number(sale.quantity || 0));
                     this.sales = this.sales.filter(s => s.id !== id);
                     this.persistState();
                 },
@@ -4410,8 +4734,13 @@
                     if (!exp) return;
                     if (!confirm(`Remove expense "${exp.category} - ${this.formatPHP(exp.amount)}"?`)) return;
                     if (exp.category === 'Restocking Cost') {
-                        const match = exp.notes.match(/\+(\d+)/);
-                        if (match) this.inventory -= parseInt(match[1]);
+                        const match = exp.notes.match(/\+(\d+)\s+(.+?)\s+eggs/i);
+                        if (match) {
+                            this.adjustEggTypeStock(match[2], -parseInt(match[1]));
+                        } else {
+                            const legacyMatch = exp.notes.match(/\+(\d+)/);
+                            if (legacyMatch) this.adjustEggTypeStock('Large', -parseInt(legacyMatch[1]));
+                        }
                     }
                     this.expenses = this.expenses.filter(e => e.id !== id);
                     this.persistState();
