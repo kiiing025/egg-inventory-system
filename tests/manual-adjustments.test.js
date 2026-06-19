@@ -1193,6 +1193,49 @@ test('mobile ledger redesign shell includes shared visual foundation', () => {
     assert.match(html, /getPageEyebrow\(\)/);
 });
 
+test('successful sale activates sale feedback and validation failure does not', () => {
+    const app = loadEggApp();
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.saleForm.customer = 'Animation Sale';
+    assert.equal(app.submitSale(), true);
+    assert.equal(app.entrySuccess.activeType, 'sale');
+
+    app.clearEntrySuccess();
+    app.getEggTypeByName('Large').stock = 0;
+    app.syncInventoryFromEggTypes();
+    assert.equal(app.submitSale(), false);
+    assert.equal(app.entrySuccess.activeType, '');
+});
+
+test('successful restock activates restock feedback and validation failure does not', () => {
+    const app = loadEggApp();
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.restockForm.quantity = 5;
+    app.restockForm.unitCost = 180;
+    assert.equal(app.submitRestock(), true);
+    assert.equal(app.entrySuccess.activeType, 'restock');
+
+    app.clearEntrySuccess();
+    app.restockForm.quantity = 0;
+    assert.equal(app.submitRestock(), false);
+    assert.equal(app.entrySuccess.activeType, '');
+});
+
+test('successful expense activates expense feedback and validation failure does not', () => {
+    const app = loadEggApp();
+    app.expenseForm.category = 'Transportation';
+    app.expenseForm.amount = 100;
+    assert.equal(app.submitExpense(), true);
+    assert.equal(app.entrySuccess.activeType, 'expense');
+
+    app.clearEntrySuccess();
+    app.expenseForm.amount = 0;
+    assert.equal(app.submitExpense(), false);
+    assert.equal(app.entrySuccess.activeType, '');
+});
+
 test('sale restock and expense cards render accessible success feedback', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 

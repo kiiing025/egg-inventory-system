@@ -5326,10 +5326,11 @@
                         actionType: 'sale_created',
                         entityType: 'sale',
                         entityId: saleId,
-                        summary: `Sale recorded for ${saleRecord.customer || 'Walk-in'}`,
+                        summary: `Sale added for ${saleRecord.customer || 'Walk-in'}`,
                         note: `${saleRecord.quantity} ${eggTypeName} tray${Number(saleRecord.quantity) === 1 ? '' : 's'}`
                     }, beforeContext, ['sales', 'eggTypes']);
                     this.persistState();
+                    this.showEntrySuccess('sale');
                     this.saleForm.customer = '';
                     this.saleForm.orderDate = this.formatDateForInput();
                     this.saleForm.eggType = this.getEggTypeByName(eggTypeName).name;
@@ -5372,6 +5373,7 @@
                         note: `Cost ${this.formatPHP(cost)}`
                     }, beforeContext, ['expenses', 'eggTypes']);
                     this.persistState();
+                    this.showEntrySuccess('restock');
                     return true;
                 },
 
@@ -5398,10 +5400,11 @@
                         actionType: 'expense_created',
                         entityType: 'expense',
                         entityId: expenseId,
-                        summary: `${category} expense recorded`,
+                        summary: `${category} expense added`,
                         note: this.expenseForm.notes
                     }, beforeContext, ['expenses']);
                     this.persistState();
+                    this.showEntrySuccess('expense');
                     this.expenseForm.amount = '';
                     this.expenseForm.notes = '';
                     return true;
