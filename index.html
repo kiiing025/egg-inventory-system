@@ -2254,6 +2254,10 @@
                     message: '',
                     timer: null
                 },
+                entrySuccess: {
+                    activeType: '',
+                    timer: null
+                },
                 currentPage: 'dashboard',
                 currentTab: 'sales',
                 salesLedgerSearch: '',
@@ -2750,6 +2754,31 @@
                         message: '',
                         timer: null
                     };
+                },
+
+                isEntrySuccessActive(type) {
+                    return this.entrySuccess.activeType === type;
+                },
+
+                clearEntrySuccess() {
+                    if (this.entrySuccess.timer && typeof window !== 'undefined' && window.clearTimeout) {
+                        window.clearTimeout(this.entrySuccess.timer);
+                    }
+                    this.entrySuccess = { activeType: '', timer: null };
+                    return true;
+                },
+
+                showEntrySuccess(type) {
+                    const allowedTypes = ['sale', 'restock', 'expense'];
+                    if (!allowedTypes.includes(type)) return false;
+                    if (this.entrySuccess.timer && typeof window !== 'undefined' && window.clearTimeout) {
+                        window.clearTimeout(this.entrySuccess.timer);
+                    }
+                    this.entrySuccess = { activeType: type, timer: null };
+                    if (typeof window !== 'undefined' && window.setTimeout) {
+                        this.entrySuccess.timer = window.setTimeout(() => this.clearEntrySuccess(), 1200);
+                    }
+                    return true;
                 },
 
                 getActivityById(activityId) {

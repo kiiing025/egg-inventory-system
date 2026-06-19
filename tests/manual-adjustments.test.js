@@ -38,6 +38,7 @@ function loadEggApp(storage = createStorage(), options = {}) {
         console,
         Date
     };
+    if (options.window) context.window = options.window;
 
     vm.createContext(context);
     vm.runInContext(script, context);
@@ -1766,6 +1767,34 @@ test('persistable sync state contains all business data', () => {
     assert.deepEqual(data.stockAdjustments, app.stockAdjustments);
     assert.deepEqual(data.dailyClosings, app.dailyClosings);
     assert.deepEqual(data.config, app.config);
+});
+
+test('entry success feedback activates one card and resets after 1.2 seconds', () => {
+    let scheduled = null;
+    let clearedTimer = null;
+    const app = loadEggApp(createStorage(), {
+        window: {
+            setTimeout(callback, delay) {
+                scheduled = { callback, delay };
+                return 41;
+            },
+            clearTimeout(timer) {
+                clearedTimer = timer;
+            }
+        }
+    });
+
+    assert.equal(app.showEntrySuccess('sale'), true);
+    assert.equal(app.isEntrySuccessActive('sale'), true);
+    assert.equal(app.isEntrySuccessActive('restock'), false);
+    assert.equal(scheduled.delay, 1200);
+
+    assert.equal(app.showEntrySuccess('expense'), true);
+    assert.equal(clearedTimer, 41);
+    assert.equal(app.isEntrySuccessActive('expense'), true);
+
+    scheduled.callback();
+    assert.equal(app.entrySuccess.activeType, '');
 });
 
 test('activity history persists and trims to the newest 1000 records', () => {
