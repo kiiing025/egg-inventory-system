@@ -1193,6 +1193,20 @@ test('mobile ledger redesign shell includes shared visual foundation', () => {
     assert.match(html, /getPageEyebrow\(\)/);
 });
 
+test('sale restock and expense cards render accessible success feedback', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /data-entry-card="sale"/);
+    assert.match(html, /data-entry-card="restock"/);
+    assert.match(html, /data-entry-card="expense"/);
+    assert.match(html, /isEntrySuccessActive\('sale'\)/);
+    assert.match(html, /isEntrySuccessActive\('restock'\)/);
+    assert.match(html, /isEntrySuccessActive\('expense'\)/);
+    assert.match(html, /✓ Added/);
+    assert.match(html, /@keyframes yolkEntrySuccess/);
+    assert.match(html, /prefers-reduced-motion: reduce[\s\S]*\.entry-success/);
+});
+
 test('operations desk redesign adds command center and work queues', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 
