@@ -25,7 +25,7 @@ function createStorage(initial = {}) {
     };
 }
 
-function loadEggApp(storage = createStorage()) {
+function loadEggApp(storage = createStorage(), options = {}) {
     const html = fs.readFileSync(indexPath, 'utf8');
     const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
     const script = scripts
@@ -33,10 +33,8 @@ function loadEggApp(storage = createStorage()) {
         .find(content => content.includes('function eggApp()'));
     const context = {
         localStorage: storage,
-        alert() {},
-        confirm() {
-            return true;
-        },
+        alert: options.alert || (() => {}),
+        confirm: options.confirm || (() => true),
         console,
         Date
     };
@@ -594,6 +592,47 @@ test('customer order history can edit an order without changing current stock', 
     const savedData = JSON.parse(storage.getItem('egg_app_data'));
     assert.equal(savedData.inventory, 88);
     assert.equal(savedData.sales[0].quantity, 3);
+});
+
+test('unchecking paid while editing a financial order makes it unpaid', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.sales = [{
+        id: 31,
+        customer: 'Payment Correction',
+        quantity: 1,
+        unitPrice: 250,
+        type: 'Regular',
+        paid: true,
+        orderDate: '2026-06-18',
+        paidDate: '2026-06-18',
+        paymentMethod: 'Cash',
+        payments: [{
+            id: 310,
+            amount: 250,
+            account: 'Cash',
+            date: '2026-06-18'
+        }]
+    }];
+
+    assert.equal(app.openCustomerOrderEdit(31), true);
+    app.customerOrderEditForm.paid = false;
+
+    assert.equal(app.saveCustomerOrderEdit(), true);
+    assert.equal(app.getSaleStatus(app.sales[0]), 'Unpaid');
+    assert.equal(app.getSalePaymentTotal(app.sales[0]), 0);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.sales[0].paidDate, '');
+    assert.equal(app.sales[0].paymentMethod, '');
+
+    const savedSale = JSON.parse(storage.getItem('egg_app_data')).sales[0];
+    assert.equal(savedSale.paid, false);
+    assert.deepEqual(savedSale.payments, []);
+
+    assert.equal(app.undoActivity(app.activityLog[0].id), true);
+    assert.equal(app.getSaleStatus(app.sales[0]), 'Paid');
+    assert.equal(app.getSalePaymentTotal(app.sales[0]), 250);
+    assert.equal(app.getCashOnHand(), 250);
 });
 
 test('customer order history edit controls are rendered', () => {
@@ -1727,4 +1766,629 @@ test('persistable sync state contains all business data', () => {
     assert.deepEqual(data.stockAdjustments, app.stockAdjustments);
     assert.deepEqual(data.dailyClosings, app.dailyClosings);
     assert.deepEqual(data.config, app.config);
+});
+
+test('activity history persists and trims to the newest 1000 records', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.activityLog = Array.from({ length: 1002 }, (_, index) => ({ id: `activity-${index}` }));
+
+    app.trimActivityLog();
+    app.persistState({ sync: false });
+
+    const savedData = JSON.parse(storage.getItem('egg_app_data'));
+    assert.equal(app.activityLog.length, 1000);
+    assert.equal(app.activityLog[0].id, 'activity-0');
+    assert.equal(app.activityLog[999].id, 'activity-999');
+    assert.equal(savedData.activityLog.length, 1000);
+
+    const restored = loadEggApp(createStorage());
+    restored.applyPersistedState(savedData);
+    assert.equal(restored.activityLog.length, 1000);
+    assert.equal(restored.activityLog[0].id, 'activity-0');
+});
+
+test('activity snapshots store only changed collection records', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 1, customer: 'A', quantity: 1 },
+        { id: 2, customer: 'Unchanged', quantity: 2 }
+    ];
+    const before = app.captureActivityContext(['sales']);
+
+    app.sales[0].customer = 'B';
+    const changes = app.diffActivityContexts(before, app.captureActivityContext(['sales']));
+
+    assert.equal(changes.length, 1);
+    assert.equal(changes[0].collection, 'sales');
+    assert.equal(changes[0].entityId, 1);
+    assert.equal(changes[0].before.customer, 'A');
+    assert.equal(changes[0].after.customer, 'B');
+    assert.equal(changes[0].beforeIndex, 0);
+    assert.equal(changes[0].afterIndex, 0);
+});
+
+test('activity recorder stores compact changes and financial effects', () => {
+    const app = loadEggApp();
+    app.inventory = 20;
+    app.ensureEggCatalog();
+    const before = app.captureActivityContext(['sales', 'eggTypes']);
+
+    app.sales.unshift({
+        id: 99,
+        customer: 'Undo Customer',
+        orderDate: '2026-06-18',
+        quantity: 2,
+        eggType: 'Large',
+        type: 'Regular',
+        unitPrice: 250,
+        paid: false
+    });
+    app.adjustEggTypeStock('Large', -2);
+    const activity = app.recordActivityFromContext({
+        actionType: 'sale_created',
+        entityType: 'sale',
+        entityId: 99,
+        summary: 'Sale recorded for Undo Customer'
+    }, before, ['sales', 'eggTypes']);
+
+    assert.equal(app.activityLog.length, 1);
+    assert.equal(activity.changes.length, 2);
+    assert.equal(activity.effects.inventory, -2);
+    assert.equal(activity.summary, 'Sale recorded for Undo Customer');
+    assert.equal(app.activityUndo.activityId, activity.id);
+});
+
+test('undo restores every changed record and rejects a duplicate reversal', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.inventory = 20;
+    app.ensureEggCatalog();
+    const before = app.captureActivityContext(['sales', 'eggTypes']);
+
+    app.sales.unshift({
+        id: 100,
+        customer: 'Undo Customer',
+        orderDate: '2026-06-18',
+        quantity: 2,
+        eggType: 'Large',
+        type: 'Regular',
+        unitPrice: 250,
+        paid: false
+    });
+    app.adjustEggTypeStock('Large', -2);
+    const activity = app.recordActivityFromContext({
+        actionType: 'sale_created',
+        entityType: 'sale',
+        entityId: 100,
+        summary: 'Sale recorded for Undo Customer'
+    }, before, ['sales', 'eggTypes']);
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.sales.some(sale => sale.id === 100), false);
+    assert.equal(app.getEggTypeStock('Large'), 20);
+    assert.ok(activity.reversedBy);
+    assert.equal(app.activityLog[0].reversalOf, activity.id);
+    assert.equal(app.undoActivity(activity.id), false);
+    assert.equal(JSON.parse(storage.getItem('egg_app_data')).activityLog.length, 2);
+});
+
+test('recorded sale can be undone with cash and stock restored', () => {
+    const app = loadEggApp();
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.saleForm.customer = 'Undo Sale';
+    app.saleForm.quantity = 2;
+    app.saleForm.unitPrice = 250;
+    app.saleForm.type = 'Regular';
+    app.saleForm.paymentAccount = 'Cash';
+
+    assert.equal(app.submitSale(), true);
+    assert.equal(app.activityLog[0].actionType, 'sale_created');
+    assert.equal(app.getCashOnHand(), 500);
+    assert.equal(app.getEggTypeStock('Large'), 8);
+
+    assert.equal(app.undoActivity(app.activityLog[0].id), true);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getEggTypeStock('Large'), 10);
+    assert.equal(app.sales.length, 0);
+});
+
+test('partial online payment activity can be undone without changing profit', () => {
+    const app = loadEggApp();
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.saleForm.customer = 'Loan Customer';
+    app.saleForm.quantity = 1;
+    app.saleForm.type = 'Loaned';
+    app.saleForm.unitPrice = 270;
+    assert.equal(app.submitSale(), true);
+    const profit = app.getNetProfit();
+    const sale = app.sales[0];
+
+    app.openPaymentModal(sale.id);
+    app.paymentForm.amount = 100;
+    app.paymentForm.account = 'GCash';
+    assert.equal(app.savePayment(), true);
+    const paymentActivity = app.activityLog[0];
+    assert.equal(paymentActivity.actionType, 'payment_recorded');
+    assert.equal(app.getWalletBalance('GCash'), 100);
+    assert.equal(app.getSaleBalance(sale), 170);
+
+    assert.equal(app.undoActivity(paymentActivity.id), true);
+    assert.equal(app.getWalletBalance('GCash'), 0);
+    assert.equal(app.getSaleBalance(app.sales[0]), 270);
+    assert.equal(app.getNetProfit(), profit);
+});
+
+test('wallet transfer activity can be undone without changing profit', () => {
+    const app = loadEggApp();
+    app.sales = [{
+        id: 5,
+        customer: 'Online Customer',
+        quantity: 1,
+        unitPrice: 900,
+        type: 'Regular',
+        paid: true,
+        payments: [{ id: 6, amount: 900, account: 'GCash', date: '2026-06-18' }]
+    }];
+    const profit = app.getNetProfit();
+    app.walletTransferForm = {
+        open: true,
+        account: 'GCash',
+        amount: 400,
+        date: '2026-06-18',
+        note: 'Cash out'
+    };
+
+    assert.equal(app.saveWalletTransfer(), true);
+    const transferActivity = app.activityLog[0];
+    assert.equal(transferActivity.actionType, 'wallet_transferred');
+    assert.equal(app.getWalletBalance('GCash'), 500);
+    assert.equal(app.getCashOnHand(), 400);
+
+    assert.equal(app.undoActivity(transferActivity.id), true);
+    assert.equal(app.getWalletBalance('GCash'), 900);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.getNetProfit(), profit);
+});
+
+test('restock activity undo removes its expense and added stock', () => {
+    const app = loadEggApp();
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.restockForm.eggType = 'Large';
+    app.restockForm.quantity = 5;
+    app.restockForm.unitCost = 10;
+
+    assert.equal(app.submitRestock(), true);
+    const restockActivity = app.activityLog[0];
+    assert.equal(restockActivity.actionType, 'restock_recorded');
+    assert.equal(app.getEggTypeStock('Large'), 15);
+    assert.equal(app.expenses.length, 1);
+
+    assert.equal(app.undoActivity(restockActivity.id), true);
+    assert.equal(app.getEggTypeStock('Large'), 10);
+    assert.equal(app.expenses.length, 0);
+});
+
+test('manual cash correction activity can be undone', () => {
+    const app = loadEggApp();
+    app.openAdjustmentModal('cash');
+    app.adjustmentModal.value = 150;
+    app.adjustmentModal.note = 'Count correction';
+
+    assert.equal(app.saveAdjustment(), true);
+    const adjustmentActivity = app.activityLog[0];
+    assert.equal(adjustmentActivity.actionType, 'cash_adjusted');
+    assert.equal(app.getCashOnHand(), 150);
+
+    assert.equal(app.undoActivity(adjustmentActivity.id), true);
+    assert.equal(app.getCashOnHand(), 0);
+    assert.equal(app.cashAdjustments.length, 0);
+});
+
+test('past order activity undo leaves all current business totals unchanged', () => {
+    const app = loadEggApp();
+    app.inventory = 25;
+    app.ensureEggCatalog();
+    const before = {
+        cash: app.getCashOnHand(),
+        profit: app.getNetProfit(),
+        receivable: app.getOutstandingLoans(),
+        stock: app.inventory
+    };
+    app.pastOrderForm = {
+        open: true,
+        customer: 'Past Customer',
+        orderDate: '2026-04-01',
+        paidDate: '2026-04-01',
+        quantity: 1,
+        type: 'Regular',
+        unitPrice: 250,
+        paid: true,
+        paymentMethod: 'GCash'
+    };
+
+    assert.equal(app.savePastOrder(), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'past_order_added');
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.deepEqual({
+        cash: app.getCashOnHand(),
+        profit: app.getNetProfit(),
+        receivable: app.getOutstandingLoans(),
+        stock: app.inventory
+    }, before);
+});
+
+test('deleted sale activity can restore the sale and remove restored stock', () => {
+    const app = loadEggApp();
+    app.inventory = 8;
+    app.ensureEggCatalog();
+    app.sales = [{
+        id: 500,
+        customer: 'Deleted Sale',
+        quantity: 2,
+        eggType: 'Large',
+        type: 'Regular',
+        unitPrice: 250,
+        paid: true
+    }];
+
+    assert.equal(app.deleteSale(500), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'sale_deleted');
+    assert.equal(app.sales.length, 0);
+    assert.equal(app.getEggTypeStock('Large'), 10);
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.sales.length, 1);
+    assert.equal(app.getEggTypeStock('Large'), 8);
+});
+
+test('ordinary expense activity can be undone', () => {
+    const app = loadEggApp();
+    app.expenseForm.category = 'Tithing';
+    app.expenseForm.amount = 150;
+    app.expenseForm.notes = 'Weekly giving';
+
+    assert.equal(app.submitExpense(), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'expense_created');
+    assert.equal(app.expenses.length, 1);
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.expenses.length, 0);
+});
+
+test('stock correction activity can be undone per egg size', () => {
+    const app = loadEggApp();
+    app.inventory = 20;
+    app.ensureEggCatalog();
+    app.openAdjustmentModal('stock');
+    app.adjustmentModal.value = 17;
+    app.adjustmentModal.note = 'Cracked eggs';
+
+    assert.equal(app.saveAdjustment(), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'stock_adjusted');
+    assert.equal(app.inventory, 17);
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.inventory, 20);
+    assert.equal(app.stockAdjustments.length, 0);
+});
+
+test('collecting a loan creates a reversible payment activity', () => {
+    const app = loadEggApp();
+    app.sales = [{
+        id: 700,
+        customer: 'Loan Collection',
+        quantity: 1,
+        unitPrice: 270,
+        type: 'Loaned',
+        paid: false,
+        payments: []
+    }];
+
+    assert.equal(app.collectLoan(700), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'payment_recorded');
+    assert.equal(app.getSaleBalance(app.sales[0]), 0);
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.getSaleBalance(app.sales[0]), 270);
+    assert.equal(app.getCashOnHand(), 0);
+});
+
+test('customer merge activity restores each original order name', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 801, customer: 'Chandra', quantity: 1, unitPrice: 250, historyOnly: true, affectsCash: false },
+        { id: 802, customer: 'Chanda', quantity: 1, unitPrice: 250, historyOnly: true, affectsCash: false }
+    ];
+    app.selectedCustomerKey = app.getCustomerKey('Chandra');
+    assert.equal(app.openCustomerEdit(app.getSelectedCustomerSummary()), true);
+    app.customerEditForm.newName = 'Chanda';
+
+    assert.equal(app.saveCustomerName(), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'customer_renamed');
+    assert.equal(app.sales.map(sale => sale.customer).join('|'), 'Chanda|Chanda');
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.sales.map(sale => sale.customer).join('|'), 'Chandra|Chanda');
+});
+
+test('removed customer activity restores orders without changing stock', () => {
+    const app = loadEggApp();
+    app.inventory = 30;
+    app.ensureEggCatalog();
+    app.sales = [
+        { id: 811, customer: 'Remove Me', quantity: 2, unitPrice: 250, historyOnly: true, affectsCash: false },
+        { id: 812, customer: 'Keep Me', quantity: 1, unitPrice: 250, historyOnly: true, affectsCash: false }
+    ];
+    app.selectedCustomerKey = app.getCustomerKey('Remove Me');
+
+    assert.equal(app.removeSelectedCustomer(), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'customer_removed');
+    assert.equal(app.sales.length, 1);
+    assert.equal(app.inventory, 30);
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.sales.length, 2);
+    assert.equal(app.inventory, 30);
+});
+
+test('customer order edit activity restores the original history record', () => {
+    const app = loadEggApp();
+    app.sales = [{
+        id: 820,
+        customer: 'History Edit',
+        orderDate: '2026-04-01',
+        date: '2026-04-01',
+        quantity: 1,
+        type: 'Regular',
+        unitPrice: 250,
+        paid: true,
+        historyOnly: true,
+        affectsCash: false
+    }];
+    assert.equal(app.openCustomerOrderEdit(820), true);
+    app.customerOrderEditForm.quantity = 3;
+    app.customerOrderEditForm.unitPrice = 275;
+
+    assert.equal(app.saveCustomerOrderEdit(), true);
+    const activity = app.activityLog[0];
+    assert.equal(activity.actionType, 'sale_edited');
+    assert.equal(app.sales[0].quantity, 3);
+
+    assert.equal(app.undoActivity(activity.id), true);
+    assert.equal(app.sales[0].quantity, 1);
+    assert.equal(app.sales[0].unitPrice, 250);
+});
+
+test('product creation and price edits create reversible catalog activities', () => {
+    const app = loadEggApp();
+    app.inventory = 20;
+    app.ensureEggCatalog();
+    app.sales = [{ id: 830, customer: 'Old Sale', quantity: 1, unitPrice: 250, paid: true }];
+
+    app.openEggTypeForm();
+    app.eggTypeForm = {
+        ...app.eggTypeForm,
+        open: true,
+        name: 'Medium',
+        regularPrice: 220,
+        loanPrice: 240,
+        unitCost: 160,
+        stock: 5,
+        active: true
+    };
+    assert.equal(app.saveEggType(), true);
+    const createActivity = app.activityLog[0];
+    assert.equal(createActivity.actionType, 'product_created');
+    assert.ok(app.eggTypes.some(type => type.name === 'Medium'));
+    assert.equal(app.undoActivity(createActivity.id), true);
+    assert.equal(app.eggTypes.some(type => type.name === 'Medium'), false);
+
+    app.openEggTypeForm('Large');
+    app.eggTypeForm.regularPrice = 300;
+    assert.equal(app.saveEggType(), true);
+    const editActivity = app.activityLog[0];
+    assert.equal(editActivity.actionType, 'product_edited');
+    assert.equal(app.getDefaultUnitPrice('Regular', 'Large'), 300);
+    assert.equal(app.sales[0].unitPrice, 250);
+
+    assert.equal(app.undoActivity(editActivity.id), true);
+    assert.equal(app.getDefaultUnitPrice('Regular', 'Large'), 250);
+    assert.equal(app.sales[0].unitPrice, 250);
+});
+
+test('possible duplicate sale requires confirmation before saving', () => {
+    let confirmationMessage = '';
+    const app = loadEggApp(createStorage(), {
+        confirm(message) {
+            confirmationMessage = message;
+            return false;
+        }
+    });
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.sales = [{
+        id: 900,
+        customer: 'Joy',
+        orderDate: '2026-06-18',
+        eggType: 'Large',
+        quantity: 1,
+        type: 'Regular',
+        unitPrice: 250,
+        paid: true
+    }];
+    app.saleForm = {
+        ...app.saleForm,
+        customer: ' joy ',
+        orderDate: '2026-06-18',
+        eggType: 'large',
+        quantity: 1,
+        type: 'Regular',
+        unitPrice: 250,
+        paymentAccount: 'Cash'
+    };
+
+    assert.equal(app.submitSale(), false);
+    assert.match(confirmationMessage, /possible duplicate/i);
+    assert.equal(app.sales.length, 1);
+    assert.equal(app.activityLog.length, 0);
+});
+
+test('confirmed possible duplicate sale is still allowed', () => {
+    let confirmations = 0;
+    const app = loadEggApp(createStorage(), {
+        confirm() {
+            confirmations += 1;
+            return true;
+        }
+    });
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.sales = [{
+        id: 901,
+        customer: 'Joy',
+        orderDate: '2026-06-18',
+        eggType: 'Large',
+        quantity: 1,
+        type: 'Regular',
+        unitPrice: 250,
+        paid: true
+    }];
+    app.saleForm = {
+        ...app.saleForm,
+        customer: 'Joy',
+        orderDate: '2026-06-18',
+        eggType: 'Large',
+        quantity: 1,
+        type: 'Regular',
+        unitPrice: 250,
+        paymentAccount: 'Cash'
+    };
+
+    assert.equal(app.submitSale(), true);
+    assert.equal(confirmations, 1);
+    assert.equal(app.sales.length, 2);
+});
+
+test('activity search filters and paginates without rendering all records', () => {
+    const app = loadEggApp();
+    app.activityLog = Array.from({ length: 30 }, (_, index) => ({
+        id: `filter-${index}`,
+        actionType: index % 2 === 0 ? 'sale_created' : 'expense_created',
+        summary: index === 4 ? 'Sale recorded for Jayne' : `Activity ${index}`,
+        note: '',
+        occurredAt: `2026-06-18T10:${String(index).padStart(2, '0')}:00.000Z`,
+        changes: [],
+        effects: {}
+    }));
+
+    assert.equal(app.getVisibleActivities().length, 25);
+    app.showMoreActivities();
+    assert.equal(app.getVisibleActivities().length, 30);
+    app.activityFilter = 'sales';
+    app.activityVisibleCount = 25;
+    assert.equal(app.getFilteredActivities().length, 15);
+    app.activitySearch = 'Jayne';
+    assert.equal(app.getFilteredActivities().length, 1);
+});
+
+test('unsafe reversal is blocked without partially changing data', () => {
+    const app = loadEggApp();
+    app.inventory = 10;
+    app.ensureEggCatalog();
+    app.saleForm.customer = 'Changed Later';
+    app.saleForm.quantity = 1;
+    assert.equal(app.submitSale(), true);
+    const activity = app.activityLog[0];
+    app.sales[0].customer = 'Newer Name';
+
+    assert.equal(app.undoActivity(activity.id), false);
+    assert.equal(app.sales.length, 1);
+    assert.equal(app.sales[0].customer, 'Newer Name');
+    assert.equal(app.inventory, 9);
+    assert.match(app.activityMessage, /changed again/i);
+});
+
+test('local save failure keeps in-memory activity and reports failure', () => {
+    const storage = createStorage();
+    storage.setItem = () => {
+        throw new Error('Storage unavailable');
+    };
+    const app = loadEggApp(storage);
+    app.activityLog = [{ id: 'unsaved-activity', summary: 'Still in memory' }];
+
+    assert.equal(app.persistState({ sync: false }), false);
+    assert.equal(app.activityLog.length, 1);
+    assert.match(app.activityMessage, /could not be saved/i);
+});
+
+test('activity history and temporary undo controls are rendered', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.match(html, /currentPage === 'activity'/);
+    assert.match(html, />Activity History</);
+    assert.match(html, /x-model="activitySearch"/);
+    assert.match(html, /activityFilter/);
+    assert.match(html, /getVisibleActivities\(\)/);
+    assert.match(html, /showMoreActivities\(\)/);
+    assert.match(html, /undoActivity\(activityUndo\.activityId\)/);
+    assert.match(html, /undoActivity\(activity\.id, true\)/);
+    assert.match(html, /setCurrentPage\('activity'\)/);
+});
+
+test('activity-only backup payload is recognized and restored', () => {
+    const app = loadEggApp();
+    const parsed = app.parseBackupText(JSON.stringify({
+        activityLog: [{
+            id: 'backup-activity',
+            actionType: 'cash_adjusted',
+            summary: 'Cash corrected',
+            changes: [],
+            effects: {}
+        }]
+    }));
+
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.data.activityLog.length, 1);
+    app.applyPersistedState(parsed.data);
+    assert.equal(app.activityLog[0].id, 'backup-activity');
+});
+
+test('service worker cache version is bumped for the activity update', () => {
+    const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
+    assert.match(serviceWorker, /egg-inventory-cache-v29/);
+});
+
+test('deleted expense activity restores the original expense', () => {
+    const app = loadEggApp();
+    app.expenses = [{ id: 950, category: 'Tithing', amount: 150, notes: 'Weekly giving' }];
+
+    assert.equal(app.deleteExpense(950), true);
+    assert.equal(app.expenses.length, 0);
+    assert.equal(app.activityLog[0].actionType, 'expense_deleted');
+
+    assert.equal(app.undoActivity(app.activityLog[0].id), true);
+    assert.equal(app.expenses.length, 1);
+    assert.equal(app.expenses[0].category, 'Tithing');
+    assert.equal(app.expenses[0].amount, 150);
+});
+
+test('invalid expense values are rejected without activity or data changes', () => {
+    const app = loadEggApp();
+    app.expenseForm.category = '';
+    app.expenseForm.amount = -10;
+
+    assert.equal(app.submitExpense(), false);
+    assert.equal(app.expenses.length, 0);
+    assert.equal(app.activityLog.length, 0);
 });

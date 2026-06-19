@@ -406,6 +406,7 @@
                 <button @click="currentPage = 'sales'" :class="navButtonClass('sales')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Sales Ledger</button>
                 <button @click="currentPage = 'expenses'" :class="navButtonClass('expenses')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Expenses Ledger</button>
                 <button @click="currentPage = 'adjustments'" :class="navButtonClass('adjustments')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Manual Adjustments</button>
+                <button @click="currentPage = 'activity'" :class="navButtonClass('activity')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Activity History</button>
                 <button @click="currentPage = 'sync'" :class="navButtonClass('sync')" class="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors">Cloud Sync</button>
             </div>
         </div>
@@ -1642,6 +1643,77 @@
         </div>
         </section>
 
+        <section x-show="currentPage === 'activity'" class="space-y-5">
+            <div class="flex flex-col gap-4 border-b border-[#d7ded2] pb-5 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.16em] text-[#d34036]">Safety &amp; control</p>
+                    <h2 class="mt-1 text-2xl font-black text-[#20251f] dark:text-white">Activity History</h2>
+                    <p class="mt-1 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-400">Review important changes and safely reverse records that have not been changed again.</p>
+                </div>
+                <div class="relative w-full sm:max-w-xs">
+                    <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
+                    <input type="search" x-model="activitySearch" @input="activityVisibleCount = 25" placeholder="Search activity" class="w-full rounded-xl border border-[#d7ded2] bg-white py-2.5 pl-9 pr-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#d34036] focus:ring-2 focus:ring-[#d34036]/15 dark:border-white/10 dark:bg-white/[0.06] dark:text-white">
+                </div>
+            </div>
+
+            <div class="flex gap-2 overflow-x-auto pb-1">
+                <template x-for="filter in getActivityFilters()" :key="filter.value">
+                    <button @click="activityFilter = filter.value; activityVisibleCount = 25" x-text="filter.label" :class="activityFilter === filter.value ? 'bg-[#20251f] text-white dark:bg-white dark:text-slate-950' : 'border border-[#d7ded2] bg-white text-slate-600 hover:border-slate-400 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300'" class="shrink-0 rounded-full px-3 py-1.5 text-xs font-black transition-colors"></button>
+                </template>
+            </div>
+
+            <p x-show="activityMessage" x-text="activityMessage" class="rounded-xl border border-[#d7ded2] bg-white/70 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200"></p>
+
+            <div class="overflow-hidden border-y border-[#d7ded2] bg-white/65 dark:border-white/10 dark:bg-white/[0.03] sm:rounded-2xl sm:border">
+                <template x-for="activity in getVisibleActivities()" :key="activity.id">
+                    <article class="border-b border-[#e4e8e1] last:border-b-0 dark:border-white/10">
+                        <div class="grid gap-3 px-3 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:px-4">
+                            <div class="flex min-w-0 items-start gap-3">
+                                <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d34036]/10 text-[#d34036]">
+                                    <i :data-lucide="getActivityIcon(activity)" class="h-4 w-4"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-black text-[#20251f] dark:text-white" x-text="activity.summary"></p>
+                                    <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400" x-text="formatActivityTimestamp(activity.occurredAt)"></p>
+                                    <p class="mt-1 text-xs font-bold text-slate-700 dark:text-slate-300" x-text="getActivityEffectSummary(activity)"></p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-end gap-2 sm:col-start-3 sm:row-start-1">
+                                <span x-show="activity.reversedBy" class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase text-slate-500 dark:bg-white/10 dark:text-slate-300">Reversed</span>
+                                <button @click="activityExpandedId = activityExpandedId === activity.id ? null : activity.id; renderIcons()" class="yolk-action inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#d7ded2] bg-white text-slate-600 hover:text-slate-950 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-300" title="View details">
+                                    <i data-lucide="chevron-down" class="h-4 w-4"></i>
+                                </button>
+                                <button x-show="getActivityReversalStatus(activity).ok" @click="undoActivity(activity.id, true)" class="yolk-action rounded-full bg-[#d34036]/10 px-3 py-1.5 text-xs font-black text-[#d34036] hover:bg-[#d34036]/15">Reverse</button>
+                            </div>
+                        </div>
+                        <div x-show="activityExpandedId === activity.id" class="border-t border-[#e4e8e1] bg-[#f7f8f5] px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                            <p x-show="activity.note" class="mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><span class="font-black">Note:</span> <span x-text="activity.note"></span></p>
+                            <div class="space-y-2">
+                                <template x-for="change in activity.changes" :key="change.collection + '-' + change.entityId">
+                                    <div class="grid gap-1 text-xs sm:grid-cols-[120px_1fr]">
+                                        <span class="font-black text-slate-500" x-text="getActivityChangeLabel(change)"></span>
+                                        <span class="font-semibold text-slate-700 dark:text-slate-200" x-text="getActivityChangeSummary(change)"></span>
+                                    </div>
+                                </template>
+                            </div>
+                            <p x-show="!getActivityReversalStatus(activity).ok && !activity.reversedBy" class="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-300" x-text="getActivityReversalStatus(activity).message"></p>
+                        </div>
+                    </article>
+                </template>
+
+                <div x-show="getFilteredActivities().length === 0" class="px-6 py-14 text-center">
+                    <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#d34036]/10 text-[#d34036]"><i data-lucide="history" class="h-5 w-5"></i></span>
+                    <p class="mt-3 text-sm font-black text-[#20251f] dark:text-white">No activity to show</p>
+                    <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">New changes will appear here automatically.</p>
+                </div>
+            </div>
+
+            <button x-show="getFilteredActivities().length > getVisibleActivities().length" @click="showMoreActivities(); renderIcons()" class="yolk-action mx-auto flex items-center gap-2 rounded-xl border border-[#d7ded2] bg-white px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200">
+                <i data-lucide="chevrons-down" class="h-4 w-4"></i>
+                Show more activity
+            </button>
+        </section>
+
     </main>
 
     <nav aria-label="Mobile bottom navigation" class="lg:hidden fixed inset-x-0 bottom-0 z-40 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pointer-events-none">
@@ -1679,10 +1751,22 @@
             <i data-lucide="sliders-horizontal" class="h-5 w-5 text-[#d34036]"></i>
             Manual Adjustments
         </button>
+        <button @click="setCurrentPage('activity')" class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition-colors hover:bg-slate-100 dark:hover:bg-white/10">
+            <i data-lucide="history" class="h-5 w-5 text-[#d34036]"></i>
+            Activity History
+        </button>
         <button @click="setCurrentPage('sync')" class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition-colors hover:bg-slate-100 dark:hover:bg-white/10">
             <i data-lucide="cloud" class="h-5 w-5 text-[#d34036]"></i>
             Cloud Sync
         </button>
+    </div>
+
+    <div x-show="activityUndo.open" style="display: none;" x-transition class="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] z-[70] mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl bg-[#20251f] px-4 py-3 text-white shadow-2xl shadow-slate-950/25 lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0">
+        <div class="min-w-0">
+            <p class="truncate text-xs font-black" x-text="activityUndo.message"></p>
+            <p class="mt-0.5 text-[10px] font-semibold text-white/60">Saved successfully</p>
+        </div>
+        <button @click="undoActivity(activityUndo.activityId)" class="shrink-0 rounded-lg bg-white/10 px-3 py-2 text-xs font-black text-[#ffaaa3] hover:bg-white/15">Undo</button>
     </div>
 
     <!-- EGG TYPE CATALOG MODAL -->
@@ -2158,6 +2242,18 @@
                 walletTransfers: [],
                 dailyClosings: [],
                 eggTypes: [],
+                activityLog: [],
+                activitySearch: '',
+                activityFilter: 'all',
+                activityVisibleCount: 25,
+                activityExpandedId: null,
+                activityMessage: '',
+                activityUndo: {
+                    open: false,
+                    activityId: null,
+                    message: '',
+                    timer: null
+                },
                 currentPage: 'dashboard',
                 currentTab: 'sales',
                 salesLedgerSearch: '',
@@ -2371,6 +2467,7 @@
                         walletTransfers: this.walletTransfers,
                         dailyClosings: this.dailyClosings,
                         eggTypes: this.eggTypes,
+                        activityLog: this.activityLog,
                         config: this.config
                     };
                 },
@@ -2385,9 +2482,383 @@
                     this.walletTransfers = Array.isArray(savedData.walletTransfers) ? savedData.walletTransfers : [];
                     this.dailyClosings = Array.isArray(savedData.dailyClosings) ? savedData.dailyClosings : [];
                     this.eggTypes = Array.isArray(savedData.eggTypes) ? savedData.eggTypes : [];
+                    this.activityLog = Array.isArray(savedData.activityLog) ? savedData.activityLog : [];
+                    this.trimActivityLog();
                     if (savedData.config) this.config = savedData.config;
                     this.ensureEggCatalog();
                     this.normalizeHistoricalAprilSales();
+                    return true;
+                },
+
+                cloneActivityValue(value) {
+                    if (value === undefined) return null;
+                    return JSON.parse(JSON.stringify(value));
+                },
+
+                getActivityMetrics() {
+                    return {
+                        cashOnHand: Number(this.getCashOnHand() || 0),
+                        onlineCash: Number(this.getOnlineCashTotal() || 0),
+                        accountsReceivable: Number(this.getOutstandingLoans() || 0),
+                        netProfit: Number(this.getNetProfit() || 0),
+                        inventory: Number(this.inventory || 0)
+                    };
+                },
+
+                captureActivityContext(collectionNames = []) {
+                    return {
+                        collections: Object.fromEntries(collectionNames.map(name => [
+                            name,
+                            this.cloneActivityValue(Array.isArray(this[name]) ? this[name] : [])
+                        ])),
+                        metrics: this.getActivityMetrics()
+                    };
+                },
+
+                diffActivityContexts(beforeContext = {}, afterContext = {}) {
+                    const beforeCollections = beforeContext.collections || {};
+                    const afterCollections = afterContext.collections || {};
+                    const collectionNames = new Set([
+                        ...Object.keys(beforeCollections),
+                        ...Object.keys(afterCollections)
+                    ]);
+                    const changes = [];
+
+                    collectionNames.forEach(collection => {
+                        const beforeRows = Array.isArray(beforeCollections[collection]) ? beforeCollections[collection] : [];
+                        const afterRows = Array.isArray(afterCollections[collection]) ? afterCollections[collection] : [];
+                        const beforeMap = new Map(beforeRows.map((row, index) => [String(row.id), { row, index }]));
+                        const afterMap = new Map(afterRows.map((row, index) => [String(row.id), { row, index }]));
+                        const entityIds = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+
+                        entityIds.forEach(key => {
+                            const beforeEntry = beforeMap.get(key);
+                            const afterEntry = afterMap.get(key);
+                            const beforeValue = beforeEntry ? beforeEntry.row : null;
+                            const afterValue = afterEntry ? afterEntry.row : null;
+                            if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) return;
+
+                            changes.push({
+                                collection,
+                                entityId: afterValue?.id ?? beforeValue?.id ?? key,
+                                before: this.cloneActivityValue(beforeValue),
+                                after: this.cloneActivityValue(afterValue),
+                                beforeIndex: beforeEntry ? beforeEntry.index : -1,
+                                afterIndex: afterEntry ? afterEntry.index : -1
+                            });
+                        });
+                    });
+
+                    return changes;
+                },
+
+                trimActivityLog() {
+                    this.activityLog = (Array.isArray(this.activityLog) ? this.activityLog : []).slice(0, 1000);
+                    return this.activityLog;
+                },
+
+                getActivityCategory(activity) {
+                    const actionType = String(activity?.actionType || '');
+                    if (activity?.reversalOf) {
+                        const original = this.getActivityById(activity.reversalOf);
+                        if (original) return this.getActivityCategory(original);
+                    }
+                    if (actionType.startsWith('sale_') || actionType === 'past_order_added') return 'sales';
+                    if (actionType.startsWith('customer_')) return 'customers';
+                    if (actionType.startsWith('product_')) return 'products';
+                    if (actionType.includes('stock') || actionType.startsWith('restock_')) return 'stock';
+                    if (actionType.includes('payment') || actionType.includes('expense') ||
+                        actionType.includes('cash') || actionType.includes('wallet')) return 'money';
+                    return 'other';
+                },
+
+                getFilteredActivities() {
+                    const query = String(this.activitySearch || '').trim().toLowerCase();
+                    const filter = String(this.activityFilter || 'all');
+                    return (Array.isArray(this.activityLog) ? this.activityLog : []).filter(activity => {
+                        if (filter !== 'all' && this.getActivityCategory(activity) !== filter) return false;
+                        if (!query) return true;
+                        return [activity.summary, activity.note, activity.actionType, activity.entityType]
+                            .some(value => String(value || '').toLowerCase().includes(query));
+                    });
+                },
+
+                getVisibleActivities() {
+                    return this.getFilteredActivities().slice(0, Number(this.activityVisibleCount || 25));
+                },
+
+                showMoreActivities() {
+                    this.activityVisibleCount = Number(this.activityVisibleCount || 25) + 25;
+                    return this.activityVisibleCount;
+                },
+
+                getActivityEffectSummary(activity) {
+                    const effects = activity?.effects || {};
+                    const parts = [];
+                    if (Math.abs(Number(effects.cashOnHand || 0)) > 0.001) {
+                        parts.push(`${this.formatSignedPHP(effects.cashOnHand)} physical cash`);
+                    }
+                    if (Math.abs(Number(effects.onlineCash || 0)) > 0.001) {
+                        parts.push(`${this.formatSignedPHP(effects.onlineCash)} online cash`);
+                    }
+                    if (Math.abs(Number(effects.accountsReceivable || 0)) > 0.001) {
+                        parts.push(`${this.formatSignedPHP(effects.accountsReceivable)} receivable`);
+                    }
+                    if (Math.abs(Number(effects.inventory || 0)) > 0.001) {
+                        parts.push(`${this.formatSignedNumber(effects.inventory)} eggs`);
+                    }
+                    return parts.join(' · ') || 'No balance change';
+                },
+
+                getActivityReversalStatus(activity) {
+                    return this.validateActivityReversal(activity);
+                },
+
+                getActivityFilters() {
+                    return [
+                        { value: 'all', label: 'All' },
+                        { value: 'sales', label: 'Sales' },
+                        { value: 'money', label: 'Money' },
+                        { value: 'stock', label: 'Stock' },
+                        { value: 'customers', label: 'Customers' },
+                        { value: 'products', label: 'Products' }
+                    ];
+                },
+
+                getActivityIcon(activity) {
+                    const icons = {
+                        sales: 'shopping-bag',
+                        money: 'wallet-cards',
+                        stock: 'package-check',
+                        customers: 'users',
+                        products: 'egg',
+                        other: 'history'
+                    };
+                    return icons[this.getActivityCategory(activity)] || icons.other;
+                },
+
+                formatActivityTimestamp(value) {
+                    const parsed = new Date(value);
+                    if (Number.isNaN(parsed.getTime())) return String(value || '');
+                    return parsed.toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                    });
+                },
+
+                getActivityChangeLabel(change) {
+                    const labels = {
+                        sales: 'Order',
+                        expenses: 'Expense',
+                        eggTypes: 'Egg size',
+                        cashAdjustments: 'Cash correction',
+                        stockAdjustments: 'Stock correction',
+                        walletTransfers: 'Wallet transfer'
+                    };
+                    return labels[change?.collection] || 'Record';
+                },
+
+                formatActivityRecord(record, collection) {
+                    if (!record) return 'None';
+                    if (collection === 'sales') {
+                        return `${record.customer || 'Walk-in'} · ${Number(record.quantity || 0)} tray${Number(record.quantity || 0) === 1 ? '' : 's'} · ${this.formatPHP(Number(record.quantity || 0) * Number(record.unitPrice || 0))}`;
+                    }
+                    if (collection === 'expenses') {
+                        return `${record.category || 'Expense'} · ${this.formatPHP(record.amount)}`;
+                    }
+                    if (collection === 'eggTypes') {
+                        return `${record.name || 'Egg size'} · ${Number(record.stock || 0)} stock · ${this.formatPHP(record.regularPrice)} regular`;
+                    }
+                    if (collection === 'walletTransfers') {
+                        return `${record.account || 'Wallet'} · ${this.formatPHP(record.amount)}`;
+                    }
+                    if (collection === 'cashAdjustments' || collection === 'stockAdjustments') {
+                        return `${record.oldValue ?? 0} → ${record.newValue ?? 0}${record.note ? ` · ${record.note}` : ''}`;
+                    }
+                    return `Record ${record.id ?? ''}`.trim();
+                },
+
+                getActivityChangeSummary(change) {
+                    if (!change?.before) return `Added ${this.formatActivityRecord(change?.after, change?.collection)}`;
+                    if (!change?.after) return `Removed ${this.formatActivityRecord(change?.before, change?.collection)}`;
+                    return `${this.formatActivityRecord(change.before, change.collection)} → ${this.formatActivityRecord(change.after, change.collection)}`;
+                },
+
+                createActivityId() {
+                    return `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                },
+
+                diffActivityMetrics(beforeMetrics = {}, afterMetrics = {}) {
+                    const keys = ['cashOnHand', 'onlineCash', 'accountsReceivable', 'netProfit', 'inventory'];
+                    return Object.fromEntries(keys.map(key => [
+                        key,
+                        Number(((Number(afterMetrics[key] || 0) - Number(beforeMetrics[key] || 0))).toFixed(2))
+                    ]));
+                },
+
+                recordActivityFromContext(meta, beforeContext, collectionNames = []) {
+                    const afterContext = this.captureActivityContext(collectionNames);
+                    const changes = this.diffActivityContexts(beforeContext, afterContext);
+                    if (changes.length === 0) return null;
+
+                    const activity = {
+                        id: this.createActivityId(),
+                        actionType: String(meta?.actionType || 'record_changed'),
+                        entityType: String(meta?.entityType || 'record'),
+                        entityId: meta?.entityId ?? null,
+                        summary: String(meta?.summary || 'Record changed'),
+                        occurredAt: new Date().toISOString(),
+                        changes,
+                        effects: this.diffActivityMetrics(beforeContext?.metrics, afterContext.metrics),
+                        note: String(meta?.note || '').trim(),
+                        reversalOf: meta?.reversalOf || null,
+                        reversedBy: null
+                    };
+
+                    this.activityLog.unshift(activity);
+                    this.trimActivityLog();
+                    if (meta?.showUndo !== false && !activity.reversalOf) this.showUndoToast(activity);
+                    return activity;
+                },
+
+                showUndoToast(activity) {
+                    if (!activity) return false;
+                    if (this.activityUndo.timer && typeof window !== 'undefined' && window.clearTimeout) {
+                        window.clearTimeout(this.activityUndo.timer);
+                    }
+                    this.activityUndo = {
+                        open: true,
+                        activityId: activity.id,
+                        message: activity.summary,
+                        timer: null
+                    };
+                    if (typeof window !== 'undefined' && window.setTimeout) {
+                        this.activityUndo.timer = window.setTimeout(() => this.dismissUndoToast(), 10000);
+                    }
+                    return true;
+                },
+
+                dismissUndoToast() {
+                    if (this.activityUndo.timer && typeof window !== 'undefined' && window.clearTimeout) {
+                        window.clearTimeout(this.activityUndo.timer);
+                    }
+                    this.activityUndo = {
+                        open: false,
+                        activityId: null,
+                        message: '',
+                        timer: null
+                    };
+                },
+
+                getActivityById(activityId) {
+                    return this.activityLog.find(activity => String(activity.id) === String(activityId)) || null;
+                },
+
+                getActivityCollectionRecord(collection, entityId) {
+                    const rows = Array.isArray(this[collection]) ? this[collection] : [];
+                    return rows.find(row => String(row.id) === String(entityId)) || null;
+                },
+
+                activityValuesMatch(left, right) {
+                    return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+                },
+
+                validateActivityReversal(activity) {
+                    if (!activity) return { ok: false, message: 'Activity could not be found.' };
+                    if (activity.reversalOf) return { ok: false, message: 'A reversal cannot be reversed again.' };
+                    if (activity.reversedBy) return { ok: false, message: 'This activity has already been reversed.' };
+                    if (!Array.isArray(activity.changes) || activity.changes.length === 0) {
+                        return { ok: false, message: 'This activity has no restorable changes.' };
+                    }
+
+                    for (const change of activity.changes) {
+                        const current = this.getActivityCollectionRecord(change.collection, change.entityId);
+                        if (!this.activityValuesMatch(current, change.after)) {
+                            return {
+                                ok: false,
+                                message: 'This record changed again afterward. Reverse the newer activity first.'
+                            };
+                        }
+                    }
+
+                    const effects = activity.effects || {};
+                    const resultingCash = this.getCashOnHand() - Number(effects.cashOnHand || 0);
+                    const resultingOnlineCash = this.getOnlineCashTotal() - Number(effects.onlineCash || 0);
+                    const resultingInventory = Number(this.inventory || 0) - Number(effects.inventory || 0);
+                    const cashRemovalActions = ['sale_created', 'payment_recorded', 'wallet_transferred', 'cash_adjusted'];
+                    const onlineCashRemovalActions = ['sale_created', 'payment_recorded'];
+                    if (cashRemovalActions.includes(activity.actionType) && resultingCash < -0.001) {
+                        return { ok: false, message: 'There is not enough physical cash to reverse this activity safely.' };
+                    }
+                    if (onlineCashRemovalActions.includes(activity.actionType) && resultingOnlineCash < -0.001) {
+                        return { ok: false, message: 'There is not enough online cash to reverse this activity safely.' };
+                    }
+                    if (resultingInventory < -0.001) {
+                        return { ok: false, message: 'Current stock is too low to reverse this activity safely.' };
+                    }
+                    return { ok: true, message: '' };
+                },
+
+                applyActivityChanges(changes, targetKey = 'before') {
+                    changes.forEach(change => {
+                        const rows = Array.isArray(this[change.collection]) ? [...this[change.collection]] : [];
+                        const currentIndex = rows.findIndex(row => String(row.id) === String(change.entityId));
+                        const target = this.cloneActivityValue(change[targetKey]);
+                        const targetIndex = Number(change[`${targetKey}Index`]);
+
+                        if (target === null) {
+                            if (currentIndex >= 0) rows.splice(currentIndex, 1);
+                        } else if (currentIndex >= 0) {
+                            rows.splice(currentIndex, 1, target);
+                        } else {
+                            const insertionIndex = Number.isInteger(targetIndex) && targetIndex >= 0
+                                ? Math.min(targetIndex, rows.length)
+                                : 0;
+                            rows.splice(insertionIndex, 0, target);
+                        }
+                        this[change.collection] = rows;
+                    });
+
+                    if (changes.some(change => change.collection === 'eggTypes')) this.syncInventoryFromEggTypes();
+                    this.salesLedgerCache = null;
+                },
+
+                undoActivity(activityId, requireConfirmation = false) {
+                    const activity = this.getActivityById(activityId);
+                    const validation = this.validateActivityReversal(activity);
+                    if (!validation.ok) {
+                        this.activityMessage = validation.message;
+                        if (typeof alert === 'function') alert(validation.message);
+                        return false;
+                    }
+                    if (requireConfirmation && typeof confirm === 'function' && !confirm(`Reverse "${activity.summary}"?`)) {
+                        return false;
+                    }
+
+                    const collectionNames = [...new Set(activity.changes.map(change => change.collection))];
+                    const beforeContext = this.captureActivityContext(collectionNames);
+                    this.applyActivityChanges(activity.changes, 'before');
+                    const reversal = this.recordActivityFromContext({
+                        actionType: 'activity_reversed',
+                        entityType: activity.entityType,
+                        entityId: activity.entityId,
+                        summary: `Reversed: ${activity.summary}`,
+                        note: activity.note,
+                        reversalOf: activity.id,
+                        showUndo: false
+                    }, beforeContext, collectionNames);
+
+                    if (!reversal) {
+                        this.applyActivityChanges(activity.changes, 'after');
+                        this.activityMessage = 'The reversal could not be recorded.';
+                        return false;
+                    }
+                    activity.reversedBy = reversal.id;
+                    this.activityMessage = `${activity.summary} was reversed.`;
+                    this.dismissUndoToast();
+                    this.persistState();
                     return true;
                 },
 
@@ -2539,10 +3010,18 @@
                 },
 
                 persistState(options = {}) {
-                    localStorage.setItem('egg_app_data', JSON.stringify(this.getPersistableState()));
-                    if (options.sync !== false) {
-                        this.markLocalSyncChange();
-                        this.queueSyncPush();
+                    try {
+                        localStorage.setItem('egg_app_data', JSON.stringify(this.getPersistableState()));
+                        if (options.sync !== false) {
+                            this.markLocalSyncChange();
+                            this.queueSyncPush();
+                        }
+                        return true;
+                    } catch (error) {
+                        this.activityMessage = 'Your change is still open, but it could not be saved on this device.';
+                        this.syncPendingChanges = true;
+                        this.syncLastError = error?.message || 'Local save failed';
+                        return false;
                     }
                 },
 
@@ -2606,7 +3085,7 @@
 
                 hasBackupBusinessData(data) {
                     if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
-                    return ['inventory', 'sales', 'expenses', 'cashAdjustments', 'stockAdjustments', 'walletTransfers', 'dailyClosings', 'eggTypes', 'config']
+                    return ['inventory', 'sales', 'expenses', 'cashAdjustments', 'stockAdjustments', 'walletTransfers', 'dailyClosings', 'eggTypes', 'activityLog', 'config']
                         .some(key => Object.prototype.hasOwnProperty.call(data, key));
                 },
 
@@ -2620,6 +3099,7 @@
                         walletTransfers: Array.isArray(data.walletTransfers) ? data.walletTransfers : [],
                         dailyClosings: Array.isArray(data.dailyClosings) ? data.dailyClosings : [],
                         eggTypes: Array.isArray(data.eggTypes) ? data.eggTypes : [],
+                        activityLog: Array.isArray(data.activityLog) ? data.activityLog.slice(0, 1000) : [],
                         config: data.config && typeof data.config === 'object' ? {
                             ...this.config,
                             ...data.config
@@ -3255,7 +3735,7 @@
                 },
 
                 isMorePage() {
-                    return ['expenses', 'adjustments', 'sync'].includes(this.currentPage);
+                    return ['expenses', 'adjustments', 'activity', 'sync'].includes(this.currentPage);
                 },
 
                 navButtonClass(page) {
@@ -3295,6 +3775,7 @@
                         sales: 'Sales Ledger',
                         expenses: 'Expenses Ledger',
                         adjustments: 'Manual Adjustments',
+                        activity: 'Activity History',
                         sync: 'Cloud Sync'
                     };
                     return titles[this.currentPage] || 'Dashboard';
@@ -3308,6 +3789,7 @@
                         sales: 'Customer orders',
                         expenses: 'Business spending',
                         adjustments: 'Manual corrections',
+                        activity: 'Safety and control',
                         sync: 'Laptop and iPhone storage'
                     };
                     return labels[this.currentPage] || 'Today overview';
@@ -3446,6 +3928,8 @@
                         this.normalizeEggTypeName(type.name).toLowerCase() === originalName.toLowerCase() ||
                         this.normalizeEggTypeName(type.name).toLowerCase() === name.toLowerCase()
                     );
+                    const actionType = existing ? 'product_edited' : 'product_created';
+                    const beforeContext = this.captureActivityContext(['eggTypes']);
                     const now = new Date().toISOString();
 
                     if (existing) {
@@ -3485,6 +3969,14 @@
                     this.restockForm.eggType = this.getEggTypeByName(this.restockForm.eggType)?.name || name;
                     this.updateSalePrice();
                     this.syncRestockCost();
+                    const savedEggType = this.getEggTypeByName(name);
+                    this.recordActivityFromContext({
+                        actionType,
+                        entityType: 'eggType',
+                        entityId: savedEggType?.id || this.createEggTypeId(name),
+                        summary: existing ? `${name} egg size updated` : `${name} egg size added`,
+                        note: `Regular ${this.formatPHP(regularPrice)} · Loaned ${this.formatPHP(loanPrice)}`
+                    }, beforeContext, ['eggTypes']);
                     this.persistState();
                     this.closeEggTypeForm();
                     return true;
@@ -3933,8 +4425,13 @@
                         day: 'numeric'
                     });
                     const note = this.adjustmentModal.note.trim();
+                    const adjustmentType = this.adjustmentModal.type;
+                    const watchedCollections = adjustmentType === 'cash'
+                        ? ['cashAdjustments']
+                        : ['stockAdjustments', 'eggTypes'];
+                    const beforeContext = this.captureActivityContext(watchedCollections);
 
-                    if (this.adjustmentModal.type === 'cash') {
+                    if (adjustmentType === 'cash') {
                         const oldValue = this.getCashOnHand();
                         const difference = newValue - oldValue;
                         this.cashAdjustments.unshift({
@@ -3964,6 +4461,14 @@
                         this.adjustEggTypeStock('Large', difference);
                     }
 
+                    this.recordActivityFromContext({
+                        actionType: adjustmentType === 'cash' ? 'cash_adjusted' : 'stock_adjusted',
+                        entityType: adjustmentType === 'cash' ? 'cashAdjustment' : 'stockAdjustment',
+                        summary: adjustmentType === 'cash'
+                            ? `Physical cash corrected to ${this.formatPHP(newValue)}`
+                            : `Current stock corrected to ${newValue} eggs`,
+                        note
+                    }, beforeContext, watchedCollections);
                     this.persistState();
                     this.closeAdjustmentModal();
                     return true;
@@ -4236,6 +4741,8 @@
                     if (matchingSales.length === 0) return false;
 
                     const displayName = this.getCustomerDisplayName(newName);
+                    const beforeContext = this.captureActivityContext(['sales']);
+                    const originalName = this.customerEditForm.originalName;
                     let changed = false;
 
                     matchingSales.forEach(sale => {
@@ -4248,7 +4755,16 @@
                         this.customerSearch = '';
                     }
 
-                    if (changed) this.persistState();
+                    if (changed) {
+                        this.recordActivityFromContext({
+                            actionType: 'customer_renamed',
+                            entityType: 'customer',
+                            entityId: originalKey,
+                            summary: `${originalName} renamed to ${displayName}`,
+                            note: `${matchingSales.length} order record${matchingSales.length === 1 ? '' : 's'} updated`
+                        }, beforeContext, ['sales']);
+                        this.persistState();
+                    }
                     this.closeCustomerEdit();
                     return true;
                 },
@@ -4264,8 +4780,16 @@
                         return false;
                     }
 
+                    const beforeContext = this.captureActivityContext(['sales']);
                     this.sales = this.sales.filter(sale => this.getCustomerKey(sale.customer) !== customer.key);
                     this.selectedCustomerKey = '';
+                    this.recordActivityFromContext({
+                        actionType: 'customer_removed',
+                        entityType: 'customer',
+                        entityId: customer.key,
+                        summary: `${customer.name} removed from Customer Book`,
+                        note: `${matchingSales.length} order record${matchingSales.length === 1 ? '' : 's'} removed`
+                    }, beforeContext, ['sales']);
                     this.persistState();
                     return true;
                 },
@@ -4339,9 +4863,11 @@
                     const orderDateDisplay = this.formatDisplayDate(orderDate);
                     const paidDateDisplay = paid ? this.formatDisplayDate(paidDate) : '';
                     const paymentMethod = this.normalizePaymentMethod(this.pastOrderForm.paymentMethod);
+                    const beforeContext = this.captureActivityContext(['sales']);
+                    const saleId = `manual-history-${Date.now()}`;
 
                     this.sales.unshift({
-                        id: `manual-history-${Date.now()}`,
+                        id: saleId,
                         source: 'manual-history',
                         date: orderDate,
                         orderDate,
@@ -4359,6 +4885,12 @@
                         affectsCash: false
                     });
 
+                    this.recordActivityFromContext({
+                        actionType: 'past_order_added',
+                        entityType: 'sale',
+                        entityId: saleId,
+                        summary: `Past order added for ${customer}`
+                    }, beforeContext, ['sales']);
                     this.selectedCustomerKey = this.getCustomerKey(customer);
                     if (this.customerSearch && !customer.toLowerCase().includes(this.customerSearch.trim().toLowerCase())) {
                         this.customerSearch = '';
@@ -4435,14 +4967,23 @@
                         return false;
                     }
 
+                    const beforeContext = this.captureActivityContext(['sales']);
+                    const account = this.normalizePaymentAccount(this.paymentForm.account);
                     const added = this.addSalePayment(sale, {
                         amount,
-                        account: this.paymentForm.account,
+                        account,
                         date: this.paymentForm.date || this.formatDateForInput(),
                         note: this.paymentForm.note
                     });
                     if (!added) return false;
 
+                    this.recordActivityFromContext({
+                        actionType: 'payment_recorded',
+                        entityType: 'sale',
+                        entityId: sale.id,
+                        summary: `${this.formatPHP(amount)} payment recorded for ${sale.customer || 'customer'}`,
+                        note: `${account}${this.paymentForm.note ? ` · ${this.paymentForm.note}` : ''}`
+                    }, beforeContext, ['sales']);
                     this.persistState();
                     this.closePaymentModal();
                     return true;
@@ -4492,14 +5033,23 @@
                     }
 
                     const date = this.walletTransferForm.date || this.formatDateForInput();
+                    const beforeContext = this.captureActivityContext(['walletTransfers']);
+                    const transferId = Date.now();
                     this.walletTransfers.unshift({
-                        id: Date.now(),
+                        id: transferId,
                         account,
                         amount,
                         date,
                         dateDisplay: this.formatDisplayDate(date),
                         note: String(this.walletTransferForm.note || '').trim()
                     });
+                    this.recordActivityFromContext({
+                        actionType: 'wallet_transferred',
+                        entityType: 'walletTransfer',
+                        entityId: transferId,
+                        summary: `${this.formatPHP(amount)} moved from ${account} to physical cash`,
+                        note: this.walletTransferForm.note
+                    }, beforeContext, ['walletTransfers']);
                     this.persistState();
                     this.closeWalletTransferModal();
                     return true;
@@ -4511,7 +5061,8 @@
 
                     const type = sale.type || 'Regular';
                     const orderDate = this.getDateInputValue(sale.orderDate || sale.date) || this.formatDateForInput();
-                    const paidDate = sale.paid ? (this.getDateInputValue(sale.paidDate || sale.orderDate || sale.date) || orderDate) : '';
+                    const paid = this.getSaleStatus(sale) === 'Paid';
+                    const paidDate = paid ? (this.getDateInputValue(sale.paidDate || sale.orderDate || sale.date) || orderDate) : '';
 
                     this.customerOrderEditForm = {
                         open: true,
@@ -4521,7 +5072,7 @@
                         quantity: Number(sale.quantity || 1),
                         type,
                         unitPrice: Number(sale.unitPrice ?? this.getDefaultUnitPrice(type)),
-                        paid: Boolean(sale.paid),
+                        paid,
                         paymentMethod: this.normalizePaymentMethod(sale.paymentMethod)
                     };
 
@@ -4555,6 +5106,7 @@
                     const sale = this.sales.find(record => record.id === this.customerOrderEditForm.saleId);
                     if (!sale) return false;
 
+                    const wasPaid = this.getSaleStatus(sale) === 'Paid';
                     const quantity = Number(this.customerOrderEditForm.quantity);
                     const unitPrice = Number(this.customerOrderEditForm.unitPrice);
                     const orderDate = this.customerOrderEditForm.orderDate || this.formatDateForInput();
@@ -4572,6 +5124,7 @@
 
                     const orderDateDisplay = this.formatDisplayDate(orderDate);
                     const paidDateDisplay = paid ? this.formatDisplayDate(paidDate) : '';
+                    const beforeContext = this.captureActivityContext(['sales']);
 
                     sale.date = orderDate;
                     sale.orderDate = orderDate;
@@ -4580,11 +5133,45 @@
                     sale.quantity = quantity;
                     sale.type = this.customerOrderEditForm.type === 'Loaned' ? 'Loaned' : 'Regular';
                     sale.unitPrice = unitPrice;
-                    sale.paid = paid;
-                    sale.paidDate = paidDate;
-                    sale.paidDateDisplay = paidDateDisplay;
                     sale.paymentMethod = this.normalizePaymentMethod(this.customerOrderEditForm.paymentMethod);
 
+                    if (this.isFinancialSale(sale)) {
+                        if (wasPaid && !paid) {
+                            sale.payments = [];
+                            sale.paymentMethod = '';
+                            sale.paid = false;
+                            sale.paidDate = '';
+                            sale.paidDateDisplay = '';
+                        } else if (paid) {
+                            sale.paid = false;
+                            const remainingBalance = this.getSaleBalance(sale);
+                            if (remainingBalance > 0) {
+                                this.addSalePayment(sale, {
+                                    amount: remainingBalance,
+                                    account: sale.paymentMethod || 'Cash',
+                                    date: paidDate
+                                });
+                            } else {
+                                this.syncSalePaymentStatus(sale);
+                            }
+                        } else {
+                            this.syncSalePaymentStatus(sale);
+                            sale.paidDate = '';
+                            sale.paidDateDisplay = '';
+                        }
+                    } else {
+                        sale.paid = paid;
+                        sale.paidDate = paidDate;
+                        sale.paidDateDisplay = paidDateDisplay;
+                    }
+
+                    this.recordActivityFromContext({
+                        actionType: 'sale_edited',
+                        entityType: 'sale',
+                        entityId: sale.id,
+                        summary: `Order updated for ${sale.customer || 'customer'}`,
+                        note: `${quantity} tray${quantity === 1 ? '' : 's'} · ${this.formatPHP(unitPrice)} each`
+                    }, beforeContext, ['sales']);
                     this.persistState();
                     this.closeCustomerOrderEdit();
                     return true;
@@ -4605,6 +5192,21 @@
                     return this.getCustomerSummaries().filter(customer => customer.unpaidAmount > 0);
                 },
 
+                findPossibleDuplicateSale(candidate = this.saleForm) {
+                    const customerKey = this.getCustomerKey(candidate?.customer);
+                    const orderDate = this.getDateInputValue(candidate?.orderDate || candidate?.date);
+                    const eggType = this.normalizeEggTypeName(candidate?.eggType).toLowerCase();
+                    const quantity = Number(candidate?.quantity || 0);
+                    if (!customerKey || !orderDate || quantity <= 0) return null;
+
+                    return this.sales.find(sale =>
+                        this.getCustomerKey(sale.customer) === customerKey &&
+                        this.getDateInputValue(sale.orderDate || sale.date) === orderDate &&
+                        this.normalizeEggTypeName(sale.eggType || 'Large').toLowerCase() === eggType &&
+                        Number(sale.quantity || 0) === quantity
+                    ) || null;
+                },
+
                 collectCustomerLoan(id) {
                     const sale = this.sales.find(s => s.id === id);
                     if (!sale || this.isHistoryOnlySale(sale) || sale.type !== 'Loaned' || sale.paid) return false;
@@ -4619,13 +5221,24 @@
                         alert("Transaction Failure: Insufficient Egg Stock Available!");
                         return false;
                     }
+                    const possibleDuplicate = this.findPossibleDuplicateSale({
+                        ...this.saleForm,
+                        eggType: eggTypeName
+                    });
+                    if (possibleDuplicate && typeof confirm === 'function' && !confirm(
+                        `Possible duplicate: ${possibleDuplicate.customer} already has the same ${eggTypeName} order on this date. Save it anyway?`
+                    )) {
+                        return false;
+                    }
                     const orderDate = this.saleForm.orderDate || this.formatDateForInput();
                     const orderDateDisplay = this.formatDisplayDate(orderDate);
                     const isPaid = this.saleForm.type === 'Regular';
                     const total = Number(this.saleForm.quantity || 0) * Number(this.saleForm.unitPrice || 0);
                     const paymentAccount = this.normalizePaymentAccount(this.saleForm.paymentAccount);
-                    this.sales.unshift({
-                        id: Date.now(),
+                    const beforeContext = this.captureActivityContext(['sales', 'eggTypes']);
+                    const saleId = Date.now();
+                    const saleRecord = {
+                        id: saleId,
                         date: orderDate,
                         orderDate,
                         dateDisplay: orderDateDisplay,
@@ -4647,8 +5260,16 @@
                             account: paymentAccount,
                             note: ''
                         }] : []
-                    });
+                    };
+                    this.sales.unshift(saleRecord);
                     this.adjustEggTypeStock(eggTypeName, -Number(this.saleForm.quantity || 0));
+                    this.recordActivityFromContext({
+                        actionType: 'sale_created',
+                        entityType: 'sale',
+                        entityId: saleId,
+                        summary: `Sale recorded for ${saleRecord.customer || 'Walk-in'}`,
+                        note: `${saleRecord.quantity} ${eggTypeName} tray${Number(saleRecord.quantity) === 1 ? '' : 's'}`
+                    }, beforeContext, ['sales', 'eggTypes']);
                     this.persistState();
                     this.saleForm.customer = '';
                     this.saleForm.orderDate = this.formatDateForInput();
@@ -4671,8 +5292,10 @@
                     }
                     this.restockForm.unitCost = unitCost;
                     const cost = this.restockForm.quantity * this.restockForm.unitCost;
+                    const beforeContext = this.captureActivityContext(['expenses', 'eggTypes']);
+                    const expenseId = Date.now();
                     this.expenses.unshift({
-                        id: Date.now(),
+                        id: expenseId,
                         date: new Date().toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric'
@@ -4682,24 +5305,47 @@
                         notes: `Ingested +${quantity} ${eggType.name} eggs into active floor stock.`
                     });
                     this.adjustEggTypeStock(eggType.name, quantity);
+                    this.recordActivityFromContext({
+                        actionType: 'restock_recorded',
+                        entityType: 'expense',
+                        entityId: expenseId,
+                        summary: `${quantity} ${eggType.name} eggs restocked`,
+                        note: `Cost ${this.formatPHP(cost)}`
+                    }, beforeContext, ['expenses', 'eggTypes']);
                     this.persistState();
                     return true;
                 },
 
                 submitExpense() {
+                    const category = String(this.expenseForm.category || '').trim();
+                    const amount = Number(this.expenseForm.amount);
+                    if (!category || !Number.isFinite(amount) || amount <= 0) {
+                        alert('Please enter an expense category and an amount above zero.');
+                        return false;
+                    }
+                    const beforeContext = this.captureActivityContext(['expenses']);
+                    const expenseId = Date.now();
                     this.expenses.unshift({
-                        id: Date.now(),
+                        id: expenseId,
                         date: new Date().toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric'
                         }),
-                        category: this.expenseForm.category,
-                        amount: this.expenseForm.amount,
+                        category,
+                        amount,
                         notes: this.expenseForm.notes
                     });
+                    this.recordActivityFromContext({
+                        actionType: 'expense_created',
+                        entityType: 'expense',
+                        entityId: expenseId,
+                        summary: `${category} expense recorded`,
+                        note: this.expenseForm.notes
+                    }, beforeContext, ['expenses']);
                     this.persistState();
                     this.expenseForm.amount = '';
                     this.expenseForm.notes = '';
+                    return true;
                 },
 
                 collectLoan(id) {
@@ -4707,32 +5353,50 @@
                     if (!targetSale || this.isHistoryOnlySale(targetSale)) return false;
                     const balance = this.getSaleBalance(targetSale);
                     if (balance <= 0) return false;
+                    const beforeContext = this.captureActivityContext(['sales']);
                     this.addSalePayment(targetSale, {
                         amount: balance,
                         account: 'Cash',
                         date: this.formatDateForInput()
                     });
+                    this.recordActivityFromContext({
+                        actionType: 'payment_recorded',
+                        entityType: 'sale',
+                        entityId: targetSale.id,
+                        summary: `Loan collected from ${targetSale.customer || 'customer'}`,
+                        note: `Cash · ${this.formatPHP(balance)}`
+                    }, beforeContext, ['sales']);
                     this.persistState();
                     return true;
                 },
 
                 deleteSale(id) {
                     const sale = this.sales.find(s => s.id === id);
-                    if (!sale) return;
+                    if (!sale) return false;
                     const isHistoryOnly = this.isHistoryOnlySale(sale);
                     const message = isHistoryOnly
                         ? `Remove history record for "${sale.customer}" (${sale.quantity} eggs)? Current stock will not change.`
                         : `Remove sale for "${sale.customer}" (${sale.quantity} eggs)? This will restore the quantity back to stock.`;
-                    if (!confirm(message)) return;
+                    if (!confirm(message)) return false;
+                    const beforeContext = this.captureActivityContext(isHistoryOnly ? ['sales'] : ['sales', 'eggTypes']);
                     if (!isHistoryOnly) this.adjustEggTypeStock(sale.eggType || 'Large', Number(sale.quantity || 0));
                     this.sales = this.sales.filter(s => s.id !== id);
+                    this.recordActivityFromContext({
+                        actionType: 'sale_deleted',
+                        entityType: 'sale',
+                        entityId: sale.id,
+                        summary: `Sale removed for ${sale.customer || 'Walk-in'}`
+                    }, beforeContext, isHistoryOnly ? ['sales'] : ['sales', 'eggTypes']);
                     this.persistState();
+                    return true;
                 },
 
                 deleteExpense(id) {
                     const exp = this.expenses.find(e => e.id === id);
-                    if (!exp) return;
-                    if (!confirm(`Remove expense "${exp.category} - ${this.formatPHP(exp.amount)}"?`)) return;
+                    if (!exp) return false;
+                    if (!confirm(`Remove expense "${exp.category} - ${this.formatPHP(exp.amount)}"?`)) return false;
+                    const watchedCollections = exp.category === 'Restocking Cost' ? ['expenses', 'eggTypes'] : ['expenses'];
+                    const beforeContext = this.captureActivityContext(watchedCollections);
                     if (exp.category === 'Restocking Cost') {
                         const match = exp.notes.match(/\+(\d+)\s+(.+?)\s+eggs/i);
                         if (match) {
@@ -4743,7 +5407,15 @@
                         }
                     }
                     this.expenses = this.expenses.filter(e => e.id !== id);
+                    this.recordActivityFromContext({
+                        actionType: 'expense_deleted',
+                        entityType: 'expense',
+                        entityId: exp.id,
+                        summary: `${exp.category} expense removed`,
+                        note: exp.notes
+                    }, beforeContext, watchedCollections);
                     this.persistState();
+                    return true;
                 },
 
                 formatPHP(value) {
