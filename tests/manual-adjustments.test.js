@@ -2450,9 +2450,9 @@ test('activity-only backup payload is recognized and restored', () => {
     assert.equal(app.activityLog[0].id, 'backup-activity');
 });
 
-test('service worker cache version is bumped for the activity update', () => {
+test('service worker cache version is bumped for success feedback', () => {
     const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
-    assert.match(serviceWorker, /egg-inventory-cache-v29/);
+    assert.match(serviceWorker, /egg-inventory-cache-v30/);
 });
 
 test('deleted expense activity restores the original expense', () => {
