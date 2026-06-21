@@ -1636,8 +1636,8 @@
 
                     <div class="grid sm:grid-cols-4 gap-2">
                         <button @click="signInSync()" :disabled="syncBusy || !isSyncConfigured()" class="px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Sign In</button>
-                        <button @click="pullSync(true)" :disabled="syncBusy || !syncUser" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Pull</button>
-                        <button @click="pushSync(true)" :disabled="syncBusy || !syncUser" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Push</button>
+                        <button @click="restoreCloudBackup(true)" :disabled="syncBusy || !syncUser || syncPendingChanges || phoneSaveStatus === 'saving'" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Restore Cloud Backup</button>
+                        <button @click="pushSync(true)" :disabled="syncBusy || !syncUser" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Back Up Now</button>
                         <button @click="signOutSync()" :disabled="syncBusy || !syncUser" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors">Sign Out</button>
                     </div>
                 </div>
@@ -3661,7 +3661,10 @@
                             if (data && data.session && data.session.user) {
                                 this.syncUser = data.session.user;
                                 this.syncStatus = 'signed-in';
-                                this.syncMessage = 'Signed in. Pull or push data when you need it.';
+                                this.syncMessage = this.syncPendingChanges
+                                    ? 'Signed in. Pending phone changes will be backed up.'
+                                    : 'Signed in. Phone backup is ready.';
+                                if (this.syncPendingChanges) this.queueSyncPush();
                             }
                         }).catch(() => {
                             this.syncStatus = 'signed-out';
@@ -3789,8 +3792,10 @@
                         this.syncUser = data.user;
                         this.syncForm.password = '';
                         this.syncStatus = 'signed-in';
-                        this.syncMessage = 'Signed in. Pulling cloud data...';
-                        await this.pullSync(false);
+                        this.syncMessage = this.syncPendingChanges
+                            ? 'Signed in. Pending phone changes will be backed up.'
+                            : 'Signed in. Phone backup is ready.';
+                        if (this.syncPendingChanges) this.queueSyncPush();
                         return true;
                     } catch (error) {
                         this.syncStatus = 'error';
@@ -3845,12 +3850,15 @@
                     this.syncStatus = 'syncing';
                     this.syncMessage = 'Saving this device to cloud...';
                     try {
+                        const phoneSaved = await this.flushPhoneStorage();
+                        if (!phoneSaved) throw new Error('Phone save must finish before cloud backup.');
+                        const cloudSnapshot = this.cloneActivityValue(this.getPersistableState());
                         const { error } = await this.syncClient
                             .from(config.tableName)
                             .upsert({
                                 user_id: this.syncUser.id,
                                 app_key: 'default',
-                                data: this.getPersistableState(),
+                                data: cloudSnapshot,
                                 updated_at: new Date().toISOString()
                             }, {
                                 onConflict: 'user_id,app_key'
@@ -3862,7 +3870,7 @@
                         this.syncPendingChanges = false;
                         this.syncLastError = '';
                         this.syncAutoSaveQueuedAt = '';
-                        this.syncMessage = 'Laptop and iPhone data are connected for this account.';
+                        this.syncMessage = 'Phone data is backed up to the cloud.';
                         this.saveSyncMeta();
                         return true;
                     } catch (error) {
@@ -3876,13 +3884,20 @@
                     }
                 },
 
-                async pullSync(manual = true) {
+                async restoreCloudBackup(manual = true) {
+                    if (this.syncPendingChanges || this.phoneSaveStatus === 'saving') {
+                        this.syncStatus = 'unsynced';
+                        this.syncMessage = 'Back up pending phone changes first before restoring cloud data.';
+                        return false;
+                    }
                     if (!this.requireSyncReady()) return false;
 
                     const config = this.getSyncConfig();
                     if (manual) this.syncBusy = true;
                     this.syncStatus = 'syncing';
-                    this.syncMessage = 'Loading cloud data...';
+                    this.syncMessage = 'Loading cloud backup...';
+                    let checkpointData = null;
+                    let checkpointCreated = false;
                     try {
                         const { data, error } = await this.syncClient
                             .from(config.tableName)
@@ -3893,24 +3908,63 @@
                         if (error) throw error;
                         if (!data) {
                             this.syncStatus = 'signed-in';
-                            this.syncMessage = 'No cloud data yet. Push this device to start syncing.';
+                            this.syncMessage = 'No cloud backup exists yet. Use Back Up Now first.';
                             return false;
                         }
-                        this.applyPersistedState(data.data);
-                        this.importHistoricalAprilSales();
-                        this.persistState({ sync: false });
+                        if (!this.hasBackupBusinessData(data.data)) {
+                            throw new Error('Cloud backup does not contain valid YOLK records.');
+                        }
+                        if (manual && typeof confirm === 'function' &&
+                            !confirm('Restore the cloud backup and replace the records currently on this phone?')) {
+                            this.syncStatus = 'signed-in';
+                            this.syncMessage = 'Cloud restore cancelled.';
+                            return false;
+                        }
+
+                        checkpointData = this.cloneActivityValue(this.getPersistableState());
+                        if (this.phoneStorageReady && this.phoneStorage?.createRecovery) {
+                            await this.phoneStorage.createRecovery(checkpointData, 'cloud-restore');
+                            checkpointCreated = true;
+                        }
+
+                        const restoredData = this.normalizeBackupData(data.data);
+                        this.applyPersistedState(restoredData);
+                        const existingIds = new Set(this.sales.map(sale => String(sale.id)));
+                        const missingHistoricalSales = this.getHistoricalAprilSales()
+                            .filter(sale => !existingIds.has(String(sale.id)));
+                        if (missingHistoricalSales.length > 0) {
+                            this.sales = [...this.sales, ...missingHistoricalSales];
+                            this.invalidateCustomerBookCache();
+                        }
+
+                        const restoredSnapshot = this.cloneActivityValue(this.getPersistableState());
+                        if (this.phoneStorageReady && this.phoneStorage?.queueSave) {
+                            await this.phoneStorage.queueSave(restoredSnapshot);
+                            await this.phoneStorage.flush();
+                        } else {
+                            localStorage.setItem('egg_app_data', JSON.stringify(restoredSnapshot));
+                        }
                         this.syncStatus = 'synced';
                         this.syncLastSyncedAt = data.updated_at ? new Date(data.updated_at).toLocaleString() : new Date().toLocaleString();
                         this.syncLastCloudLoadAt = this.syncLastSyncedAt;
                         this.syncPendingChanges = false;
                         this.syncLastError = '';
                         this.syncAutoSaveQueuedAt = '';
-                        this.syncMessage = 'Cloud data loaded on this device.';
+                        this.syncMessage = 'Cloud backup restored on this phone.';
                         this.saveSyncMeta();
                         return true;
                     } catch (error) {
+                        if (checkpointCreated && checkpointData) {
+                            try {
+                                this.applyPersistedState(checkpointData);
+                                await this.phoneStorage.queueSave(checkpointData);
+                                await this.phoneStorage.flush();
+                            } catch (rollbackError) {
+                                this.phoneStorageWarning = rollbackError?.message || 'Recovery rollback failed.';
+                            }
+                        }
                         this.syncStatus = 'error';
-                        this.syncMessage = error.message || 'Cloud load failed.';
+                        this.syncMessage = error.message || 'Cloud restore failed.';
                         this.syncLastError = this.syncMessage;
                         this.saveSyncMeta();
                         return false;

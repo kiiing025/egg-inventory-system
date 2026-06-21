@@ -25,6 +25,33 @@ function createStorage(initial = {}) {
     };
 }
 
+function createSuccessfulAuthClient() {
+    return {
+        auth: {
+            signInWithPassword: async () => ({
+                data: { user: { id: 'owner' } },
+                error: null
+            })
+        }
+    };
+}
+
+function createCloudStateClient(cloudData) {
+    const query = {
+        select() { return this; },
+        eq() { return this; },
+        async maybeSingle() {
+            return {
+                data: { data: cloudData, updated_at: '2026-06-21T00:00:00Z' },
+                error: null
+            };
+        }
+    };
+    return {
+        from() { return query; }
+    };
+}
+
 function loadEggApp(storage = createStorage(), options = {}) {
     const html = fs.readFileSync(indexPath, 'utf8');
     const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
@@ -1553,7 +1580,49 @@ test('sync health labels prioritize setup, offline, sign in, saving, errors, uns
     assert.equal(app.syncHealthDetail(), 'Last cloud save: 5/26/2026, 9:30:00 AM');
 });
 
-test('successful push and pull update sync metadata', async () => {
+test('sign in never pulls cloud data automatically', async () => {
+    const app = loadEggApp();
+    let pulls = 0;
+    app.initSync = () => true;
+    app.syncClient = createSuccessfulAuthClient();
+    app.pullSync = async () => { pulls += 1; return true; };
+    app.syncForm.email = 'owner@example.com';
+    app.syncForm.password = 'secret';
+
+    assert.equal(await app.signInSync(), true);
+    assert.equal(pulls, 0);
+});
+
+test('cloud restore is blocked while phone changes are pending', async () => {
+    const app = loadEggApp();
+    app.syncPendingChanges = true;
+    app.syncClient = createCloudStateClient({ sales: [] });
+    app.syncUser = { id: 'owner' };
+
+    assert.equal(await app.restoreCloudBackup(true), false);
+    assert.match(app.syncMessage, /back up.*phone changes first/i);
+});
+
+test('cloud restore checkpoints phone data before replacement', async () => {
+    const app = loadEggApp();
+    const calls = [];
+    app.requireSyncReady = () => true;
+    app.getSyncConfig = () => ({ tableName: 'egg_app_state' });
+    app.phoneStorage = {
+        createRecovery: async data => calls.push(['checkpoint', data.sales[0].id]),
+        queueSave: async data => calls.push(['save', data.sales[0].id]),
+        flush: async () => true
+    };
+    app.phoneStorageReady = true;
+    app.sales = [{ id: 1 }];
+    app.syncClient = createCloudStateClient({ sales: [{ id: 2 }], expenses: [], config: {} });
+    app.syncUser = { id: 'owner' };
+
+    assert.equal(await app.restoreCloudBackup(false), true);
+    assert.deepEqual(calls, [['checkpoint', 1], ['save', 2]]);
+});
+
+test('successful backup and cloud restore update sync metadata', async () => {
     const app = loadEggApp(createStorage());
     app.requireSyncReady = () => true;
     app.getSyncConfig = () => ({ tableName: 'egg_app_state', supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' });
@@ -1595,15 +1664,14 @@ test('successful push and pull update sync metadata', async () => {
     assert.notEqual(app.syncLastCloudSaveAt, '');
     assert.equal(app.syncLastError, '');
 
-    app.syncPendingChanges = true;
-    assert.equal(await app.pullSync(false), true);
+    assert.equal(await app.restoreCloudBackup(false), true);
     assert.equal(app.inventory, 77);
     assert.equal(app.syncPendingChanges, false);
     assert.notEqual(app.syncLastCloudLoadAt, '');
     assert.equal(app.syncLastError, '');
 });
 
-test('cloud pull keeps historical April customer orders when cloud copy is older', async () => {
+test('cloud restore keeps historical April customer orders when cloud copy is older', async () => {
     const storage = createStorage();
     const app = loadEggApp(storage);
     app.requireSyncReady = () => true;
@@ -1642,7 +1710,7 @@ test('cloud pull keeps historical April customer orders when cloud copy is older
         }
     };
 
-    assert.equal(await app.pullSync(false), true);
+    assert.equal(await app.restoreCloudBackup(false), true);
     assert.equal(app.sales.some(sale => sale.id === 'cloud-sale-1'), true);
     assert.equal(app.sales.filter(sale => sale.source === 'historical-april-2026-sheet').length, 30);
 
@@ -1663,6 +1731,9 @@ test('sync health is visible on dashboard and cloud sync page', () => {
     assert.match(html, /Last cloud load/);
     assert.match(html, /Unsynced changes/);
     assert.match(html, /Last error/);
+    assert.match(html, /Restore Cloud Backup/);
+    assert.match(html, /Back Up Now/);
+    assert.doesNotMatch(html, />Pull<|>Push</);
 });
 
 test('pin lock can be configured and unlocks with the correct pin', () => {
