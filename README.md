@@ -1,123 +1,52 @@
-<<<<<<< HEAD
-# EggTrack Pro - Inventory & Sales Management System 🥚
+# YOLK Inventory System
 
-A lightweight, modern web application for managing egg inventory, sales, and expenses using Alpine.js and Tailwind CSS.
+YOLK is a phone-friendly inventory, sales, customer, expense, and cash-tracking app for an egg business. It works offline after its first successful install and keeps the phone as the primary copy of the business data.
 
-## Features
+## Run the app
 
-✅ **Dashboard Metrics**
-- Cash on Hand (Revenue - Expenses)
-- Net Profit (Revenue - COGS)
-- Accounts Receivable (Unpaid Loans)
-- Current Stock Level
+The app must be served from `localhost` during development or from an HTTPS website in production. Do not open `index.html` through a `file://` URL because service workers, offline installation, and browser storage protections do not work correctly there.
 
-✅ **Sales Management**
-- Record regular or loaned sales
-- Dynamic pricing based on sale type
-- Track payment status
-- Collect outstanding loans
-
-✅ **Inventory Management**
-- Real-time stock tracking
-- Automatic inventory updates on sales and restocking
-- Quick restock functionality
-
-✅ **Expense Tracking**
-- Categorize expenses (Transportation, Utilities, Maintenance, Feed Supplies, Veterinary)
-- Automatic restocking cost tracking
-- Detailed expense ledger
-
-✅ **Data Persistence**
-- LocalStorage integration for seamless data saving
-- No backend required - pure client-side app
-
-✅ **Dark Mode**
-- Toggle between light and dark themes
-- Persistent theme preference
-
-## Technologies Used
-
-- **Frontend:** HTML5, Alpine.js 3.x, Tailwind CSS
-- **Icons:** Lucide Icons
-- **Storage:** Browser LocalStorage
-- **Styling:** Utility-first CSS
-
-## Getting Started
-
-1. Clone the repository:
-```bash
+```powershell
 git clone https://github.com/kiiing025/egg-inventory-system.git
 cd egg-inventory-system
-```
-
-2. Open the application:
-```bash
-# Using Python
+npm ci
+npm run build
 python -m http.server 8000
-
-# Or with Node.js
-npx http-server
-
-# Or simply open index.html in your browser
 ```
 
-3. Visit `http://localhost:8000` in your web browser
+Open `http://localhost:8000`. On a phone, deploy the folder to an HTTPS host, open it once while online, then use the browser's **Add to Home Screen** or **Install App** option.
 
-## Usage
+## Offline and phone storage
 
-### Recording a Sale
-1. Enter customer name
-2. Select sale type (Regular or Loaned)
-3. Enter quantity
-4. Click "Record Sale"
-- Regular sales are marked as PAID automatically
-- Loaned sales can be collected later
+- The app shell is cached locally after the first successful online load.
+- Sales, expenses, customers, inventory, payments, and settings are saved in IndexedDB on the phone.
+- Existing `egg_app_data` records are migrated from localStorage only after the IndexedDB copy is written and verified.
+- Rapid changes are saved in order, with the newest state winning.
+- The loading screen waits for phone storage so an empty app cannot silently replace saved records.
+- Browser theme, PIN-lock metadata, and cloud-sync status remain device-local and are not included in business-data backups.
 
-### Restocking
-1. Enter quantity to purchase
-2. Enter cost per unit
-3. Click "Restock Now"
-- Total cost is automatically logged as a "Restocking Cost" expense
-- Inventory is immediately updated
+Use the same browser and installed app. Do not clear the browser's site data. The Backup Center shows save status, storage pressure, and up to three rollback snapshots. Export a JSON backup regularly as an additional copy outside the browser.
 
-### Recording Expenses
-1. Select expense category
-2. Enter amount
-3. Add notes (optional)
-4. Click "Record Expense"
+## Cloud backup behavior
 
-### Collecting Loans
-- Navigate to "Sales Ledger" tab
-- Find loaned sales marked as UNPAID
-- Click "COLLECT" button to mark as paid
+Supabase is optional and acts as a backup for the phone; it is not the primary database.
 
-## Data Structure
+- Offline changes remain on the phone and are marked for backup.
+- When connectivity returns and the user is signed in, pending phone changes are backed up automatically.
+- Signing in never downloads or replaces phone data.
+- **Back Up Now** uploads the latest successfully saved phone snapshot.
+- **Restore Cloud Backup** is explicit and is blocked while phone changes are unsaved or waiting for backup.
+- Before a cloud restore replaces phone records, YOLK creates a local rollback snapshot.
 
-All data is stored in LocalStorage under:
-- `egg_app_data` - Main app state (inventory, sales, expenses, config)
-- `egg_dark_mode` - Theme preference
+Configure Supabase in `sync-config.js`. Never commit a service-role key; the browser configuration must use the public anonymous key with Row Level Security enabled.
 
-## Bug Fixes Applied
+## Development checks
 
-✅ Fixed nullish coalescing operator syntax errors (lines 290-292)
-- Changed `? ?` to `??` for proper null/undefined handling
+```powershell
+npm test
+node --check storage.js
+node --check service-worker.js
+npm audit --audit-level=high
+```
 
-## Features Planned
-
-- Export reports as PDF/CSV
-- Monthly analytics dashboard
-- Customer history tracking
-- Profit margin calculations
-- Data backup/restore functionality
-
-## License
-
-MIT License - Feel free to use for personal or commercial purposes
-
----
-
-**Made with ❤️ for egg business management**
-=======
-# egg-inventory-system
-EggTrack Pro - Inventory &amp; Sales Management System for egg business tracking
->>>>>>> 441e5d15d1c8bbd5f31eb71e2c965d59df1bab04
+The runtime libraries and generated Tailwind stylesheet are committed locally so the installed app does not depend on a CDN while offline.

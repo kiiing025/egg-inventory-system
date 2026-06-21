@@ -223,6 +223,26 @@ test('persistState queues IndexedDB save instead of writing business data to loc
     assert.equal(storage.getItem('egg_app_data'), null);
 });
 
+test('phone storage flush starts the durable retry before awaiting a queued save', async () => {
+    const app = loadEggApp();
+    let releaseSave;
+    let flushCalled = false;
+    app.phoneStorageReady = true;
+    app.phoneSavePromise = new Promise(resolve => { releaseSave = resolve; });
+    app.phoneStorage = {
+        flush: async () => {
+            flushCalled = true;
+            releaseSave(true);
+            return true;
+        }
+    };
+
+    const flushResult = app.flushPhoneStorage();
+    await Promise.resolve();
+    assert.equal(flushCalled, true);
+    assert.equal(await flushResult, true);
+});
+
 test('phone storage usage warns at eighty percent and persistence denial keeps storage ready', async () => {
     const app = loadEggApp();
     app.phoneStorageReady = true;

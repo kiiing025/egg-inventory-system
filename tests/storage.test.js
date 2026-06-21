@@ -28,9 +28,12 @@ function createMemoryBackend(options = {}) {
         async putState(record) {
             if (options.failPut) throw new Error('Write failed');
             await writeGate;
-            state = clone(record);
+            state = clone(options.corruptPut
+                ? { ...record, data: { sales: [{ id: 'corrupt' }], expenses: [] } }
+                : record);
             return clone(record);
         },
+        async deleteState() { state = null; },
         async addRecovery(record) {
             recoveries.push(clone(record));
             return clone(record);
@@ -85,6 +88,23 @@ test('failed migration keeps legacy state untouched', async () => {
 
     assert.equal(result.source, 'legacy-fallback');
     assert.equal(legacy.getItem('egg_app_data'), legacyPayload);
+});
+
+test('migration keeps legacy data and clears an unverified IndexedDB copy', async () => {
+    const legacyPayload = JSON.stringify({ sales: [{ id: 'original' }], expenses: [] });
+    const legacy = createStorage({ egg_app_data: legacyPayload });
+    const backend = createMemoryBackend({ corruptPut: true });
+    const service = createStorageService({
+        backend,
+        legacyStorage: legacy,
+        validate: value => Array.isArray(value.sales)
+    });
+
+    const result = await service.initialize();
+
+    assert.equal(result.source, 'legacy-fallback');
+    assert.equal(legacy.getItem('egg_app_data'), legacyPayload);
+    assert.equal(await backend.getState(), null);
 });
 
 test('coalesces queued saves and never lets an older revision win', async () => {

@@ -3327,9 +3327,17 @@
 
                 async flushPhoneStorage() {
                     if (!this.phoneStorageReady || !this.phoneStorage?.flush) return true;
-                    if (this.phoneSavePromise) await this.phoneSavePromise;
-                    await this.phoneStorage.flush();
-                    return this.phoneSaveStatus !== 'error';
+                    try {
+                        const durableFlush = this.phoneStorage.flush();
+                        await durableFlush;
+                        if (this.phoneSavePromise) await this.phoneSavePromise;
+                        return this.phoneSaveStatus !== 'error';
+                    } catch (error) {
+                        this.phoneSaveStatus = 'error';
+                        this.phoneSaveMessage = 'Phone save failed';
+                        this.phoneStorageWarning = error?.message || 'Phone storage failed';
+                        return false;
+                    }
                 },
 
                 getBackupSummary(data = this.getPersistableState()) {

@@ -87,6 +87,9 @@
                 await runTransaction(STATE_STORE, 'readwrite', store => store.put(stored));
                 return stored;
             },
+            async deleteState() {
+                await runTransaction(STATE_STORE, 'readwrite', store => store.delete(STATE_ID));
+            },
             async addRecovery(record) {
                 await runTransaction(RECOVERY_STORE, 'readwrite', store => store.put(record));
                 return record;
@@ -234,7 +237,10 @@
                 try {
                     await backend.putState(migrationRecord);
                     const verified = await backend.getState();
-                    if (!verified || verified.revision !== migrationRecord.revision || !validData(verified.data)) {
+                    const exactCopy = verified &&
+                        JSON.stringify(verified.data) === JSON.stringify(migrationRecord.data);
+                    if (!verified || verified.revision !== migrationRecord.revision ||
+                        !validData(verified.data) || !exactCopy) {
                         throw new Error('Migrated phone data could not be verified.');
                     }
                     revision = migrationRecord.revision;
@@ -243,6 +249,13 @@
                     updateStatus({ state: 'saved', message: 'Phone data upgraded safely', error: null, revision });
                     return { source: 'legacy-migrated', data: clone(verified.data), revision };
                 } catch (error) {
+                    if (typeof backend.deleteState === 'function') {
+                        try {
+                            await backend.deleteState();
+                        } catch (_) {
+                            // The original localStorage copy remains authoritative.
+                        }
+                    }
                     updateStatus({
                         state: 'error',
                         message: 'Could not upgrade phone storage; using the preserved local copy.',
