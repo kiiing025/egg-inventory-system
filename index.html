@@ -13,6 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="YOLK">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="stylesheet" href="assets/app.css">
+    <script src="storage.js"></script>
     <script defer src="vendor/alpine.min.js"></script>
     <script src="vendor/lucide.min.js"></script>
     <script src="sync-config.js"></script>
@@ -2313,6 +2314,14 @@
                 syncLastCloudLoadAt: '',
                 syncLastError: '',
                 syncAutoSaveQueuedAt: '',
+                phoneStorage: null,
+                phoneStorageReady: false,
+                phoneStorageUnsubscribe: null,
+                phoneSavePromise: null,
+                phoneSaveStatus: 'loading',
+                phoneSaveMessage: 'Opening phone storage...',
+                phoneStorageWarning: '',
+                phoneStorageUsage: null,
                 pinLockEnabled: false,
                 pinLockHash: '',
                 pinLockCreatedAt: '',
@@ -2448,11 +2457,36 @@
                     this.loadPinLock();
                     this.loadSyncMeta();
                     this.setupSyncNetworkListeners();
+                    this.setupPhoneStorageLifecycle();
 
-                    if (localStorage.getItem('egg_app_data')) {
-                        const savedData = JSON.parse(localStorage.getItem('egg_app_data'));
-                        this.applyPersistedState(savedData);
+                    const hasIndexedDbStorage = typeof window !== 'undefined' &&
+                        window.YolkStorage && window.indexedDB;
+                    if (hasIndexedDbStorage) {
+                        this.initializePhoneStorage()
+                            .then(() => this.finishAppInitialization())
+                            .catch(error => {
+                                this.phoneSaveStatus = 'error';
+                                this.phoneSaveMessage = 'Phone storage could not be opened';
+                                this.phoneStorageWarning = error?.message || 'Phone storage failed to open.';
+                            });
+                        return;
                     }
+
+                    const legacyText = localStorage.getItem('egg_app_data');
+                    if (legacyText) {
+                        try {
+                            const savedData = JSON.parse(legacyText);
+                            if (this.hasBackupBusinessData(savedData)) this.applyPersistedState(savedData);
+                        } catch (error) {
+                            this.phoneStorageWarning = 'Existing phone data could not be read.';
+                        }
+                    }
+                    this.phoneSaveStatus = 'legacy';
+                    this.phoneSaveMessage = 'Using basic device storage';
+                    this.finishAppInitialization();
+                },
+
+                finishAppInitialization() {
                     this.ensureEggCatalog();
                     this.importHistoricalAprilSales();
                     const savedTheme = localStorage.getItem('egg_dark_mode');
@@ -2464,6 +2498,68 @@
                     this.initSync();
                     this.renderIcons();
                     this.finishLoadingScreen();
+                },
+
+                async initializePhoneStorage() {
+                    if (!this.phoneStorage) {
+                        if (typeof window === 'undefined' || !window.YolkStorage || !window.indexedDB) {
+                            throw new Error('IndexedDB phone storage is not available.');
+                        }
+                        const backend = window.YolkStorage.createIndexedDbBackend(window.indexedDB);
+                        this.phoneStorage = window.YolkStorage.createStorageService({
+                            backend,
+                            legacyStorage: localStorage,
+                            validate: data => this.hasBackupBusinessData(data),
+                            clone: value => this.cloneActivityValue(value)
+                        });
+                    }
+
+                    if (typeof this.phoneStorage.subscribe === 'function' && !this.phoneStorageUnsubscribe) {
+                        this.phoneStorageUnsubscribe = this.phoneStorage.subscribe(status => {
+                            this.phoneSaveStatus = status.state;
+                            this.phoneSaveMessage = status.message;
+                            if (status.error) this.phoneStorageWarning = status.error;
+                        });
+                    }
+
+                    const result = await this.phoneStorage.initialize();
+                    if (result?.data) {
+                        if (!this.hasBackupBusinessData(result.data)) {
+                            throw new Error('Saved phone data did not pass validation.');
+                        }
+                        this.applyPersistedState(result.data);
+                    }
+                    this.phoneStorageReady = result?.source !== 'legacy-fallback';
+                    if (!this.phoneStorageReady) {
+                        this.phoneStorageWarning = 'IndexedDB upgrade failed. Your previous local copy was preserved.';
+                        return result;
+                    }
+
+                    if (typeof this.phoneStorage.requestPersistence === 'function') {
+                        Promise.resolve(this.phoneStorage.requestPersistence()).catch(() => false);
+                    }
+                    if (typeof this.phoneStorage.estimate === 'function') {
+                        Promise.resolve(this.phoneStorage.estimate())
+                            .then(estimate => { this.phoneStorageUsage = estimate || null; })
+                            .catch(() => null);
+                    }
+                    return result;
+                },
+
+                setupPhoneStorageLifecycle() {
+                    if (typeof window !== 'undefined' && window.addEventListener) {
+                        window.addEventListener('pagehide', () => {
+                            this.flushPhoneStorage().catch(() => false);
+                        });
+                    }
+                    if (typeof document !== 'undefined' && document.addEventListener) {
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'hidden') {
+                                this.flushPhoneStorage().catch(() => false);
+                            }
+                        });
+                    }
+                    return true;
                 },
 
                 finishLoadingScreen() {
@@ -3077,6 +3173,33 @@
 
                 persistState(options = {}) {
                     this.invalidateCustomerBookCache();
+                    if (this.phoneStorageReady && this.phoneStorage?.queueSave) {
+                        const snapshot = this.cloneActivityValue(this.getPersistableState());
+                        this.phoneSaveStatus = 'saving';
+                        this.phoneSaveMessage = 'Saving on phone...';
+                        this.phoneSavePromise = this.phoneStorage.queueSave(snapshot)
+                            .then(result => {
+                                this.phoneSaveStatus = 'saved';
+                                this.phoneSaveMessage = 'Saved on phone';
+                                this.phoneStorageWarning = '';
+                                if (options.sync !== false) {
+                                    this.markLocalSyncChange();
+                                    this.queueSyncPush();
+                                }
+                                return result;
+                            })
+                            .catch(error => {
+                                this.phoneSaveStatus = 'error';
+                                this.phoneSaveMessage = 'Phone save failed';
+                                this.phoneStorageWarning = error?.message || 'Phone storage failed';
+                                this.activityMessage = 'Your change is still open, but it could not be saved on this device.';
+                                this.syncPendingChanges = true;
+                                this.syncLastError = this.phoneStorageWarning;
+                                this.saveSyncMeta();
+                                return false;
+                            });
+                        return true;
+                    }
                     try {
                         localStorage.setItem('egg_app_data', JSON.stringify(this.getPersistableState()));
                         if (options.sync !== false) {
@@ -3090,6 +3213,13 @@
                         this.syncLastError = error?.message || 'Local save failed';
                         return false;
                     }
+                },
+
+                async flushPhoneStorage() {
+                    if (!this.phoneStorageReady || !this.phoneStorage?.flush) return true;
+                    if (this.phoneSavePromise) await this.phoneSavePromise;
+                    await this.phoneStorage.flush();
+                    return this.phoneSaveStatus !== 'error';
                 },
 
                 getBackupSummary(data = this.getPersistableState()) {

@@ -160,6 +160,42 @@ test('saved zero inventory loads as zero', () => {
     assert.equal(app.inventory, 0);
 });
 
+test('phone storage loads IndexedDB state before finishing startup', async () => {
+    const app = loadEggApp();
+    app.phoneStorage = {
+        initialize: async () => ({
+            source: 'indexeddb',
+            data: { inventory: 42, sales: [], expenses: [], config: {} }
+        }),
+        subscribe: () => () => {},
+        estimate: async () => ({ usage: 0, quota: 1 }),
+        requestPersistence: async () => false
+    };
+
+    await app.initializePhoneStorage();
+
+    assert.equal(app.inventory, 42);
+    assert.equal(app.phoneStorageReady, true);
+});
+
+test('persistState queues IndexedDB save instead of writing business data to localStorage', async () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    let saved = null;
+    app.phoneStorage = {
+        queueSave: async data => { saved = data; return { revision: 1 }; },
+        flush: async () => true
+    };
+    app.phoneStorageReady = true;
+    app.sales = [{ id: 1, customer: 'Ana' }];
+
+    assert.equal(app.persistState({ sync: false }), true);
+    await app.flushPhoneStorage();
+
+    assert.equal(saved.sales[0].customer, 'Ana');
+    assert.equal(storage.getItem('egg_app_data'), null);
+});
+
 test('egg catalog adds sizes and keeps old sale prices when prices change', () => {
     const storage = createStorage();
     const app = loadEggApp(storage);
@@ -2590,6 +2626,7 @@ test('startup uses only local pinned runtime assets', () => {
     assert.doesNotMatch(html, /<script[^>]+src="https?:\/\//);
     assert.doesNotMatch(html, /<link[^>]+href="https?:\/\//);
     assert.match(html, /href="assets\/app\.css"/);
+    assert.match(html, /src="storage\.js"/);
     assert.match(html, /src="vendor\/alpine\.min\.js"/);
     assert.match(html, /src="vendor\/lucide\.min\.js"/);
     assert.match(html, /src="vendor\/supabase\.js"/);
@@ -2600,6 +2637,7 @@ test('service worker precaches every offline runtime asset without HTML script f
     const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
 
     for (const asset of [
+        './storage.js',
         './assets/app.css',
         './vendor/alpine.min.js',
         './vendor/lucide.min.js',

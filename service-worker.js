@@ -4,6 +4,7 @@ const APP_ASSETS = [
   './index.html',
   './manifest.json',
   './sync-config.js',
+  './storage.js',
   './HEAD.png',
   './YOLK..png',
   './assets/app.css',
