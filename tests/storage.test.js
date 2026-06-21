@@ -120,3 +120,20 @@ test('keeps only the newest three recovery snapshots', async () => {
     const snapshots = await service.listRecoveries();
     assert.deepEqual(snapshots.map(snapshot => snapshot.data.sales[0].id), [4, 3, 2]);
 });
+
+test('restores a recovery snapshot through the durable save queue', async () => {
+    const backend = createMemoryBackend();
+    const service = createStorageService({
+        backend,
+        legacyStorage: createStorage(),
+        validate: value => Array.isArray(value.sales)
+    });
+    await service.createRecovery({ sales: [{ id: 'safe-copy' }] }, 'cloud-restore');
+    await service.queueSave({ sales: [{ id: 'newer-copy' }] });
+
+    const [snapshot] = await service.listRecoveries();
+    const restored = await service.restoreRecovery(snapshot.id);
+
+    assert.equal(restored.sales[0].id, 'safe-copy');
+    assert.equal((await backend.getState()).data.sales[0].id, 'safe-copy');
+});

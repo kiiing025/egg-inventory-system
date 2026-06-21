@@ -223,6 +223,39 @@ test('persistState queues IndexedDB save instead of writing business data to loc
     assert.equal(storage.getItem('egg_app_data'), null);
 });
 
+test('phone storage usage warns at eighty percent and persistence denial keeps storage ready', async () => {
+    const app = loadEggApp();
+    app.phoneStorageReady = true;
+
+    assert.equal(app.getPhoneStorageUsagePercent({ usage: 8, quota: 10 }), 80);
+    assert.match(app.getPhoneStorageWarning({ usage: 8, quota: 10 }), /80%/);
+    assert.equal(await app.requestPhoneStoragePersistence({
+        requestPersistence: async () => false
+    }), false);
+    assert.equal(app.phoneStorageReady, true);
+});
+
+test('recovery snapshot controls list and restore saved phone data', async () => {
+    const app = loadEggApp();
+    const restored = { inventory: 33, sales: [], expenses: [], config: {} };
+    app.phoneStorageReady = true;
+    app.phoneStorage = {
+        listRecoveries: async () => [{
+            id: 'snapshot-1',
+            createdAt: '2026-06-21T00:00:00Z',
+            reason: 'cloud-restore',
+            data: restored
+        }],
+        restoreRecovery: async id => id === 'snapshot-1' ? restored : null
+    };
+
+    await app.refreshPhoneRecoverySnapshots();
+    assert.equal(app.phoneRecoverySnapshots[0].id, 'snapshot-1');
+    assert.equal(await app.restorePhoneRecovery('snapshot-1'), true);
+    assert.equal(app.inventory, 33);
+    assert.equal(app.syncPendingChanges, true);
+});
+
 test('egg catalog adds sizes and keeps old sale prices when prices change', () => {
     const storage = createStorage();
     const app = loadEggApp(storage);
@@ -1949,6 +1982,9 @@ test('backup center UI is present on the cloud sync page', () => {
     assert.match(html, /@click="downloadBackup\(\)"/);
     assert.match(html, /@click="previewBackupRestore\(\)"/);
     assert.match(html, /@click="restoreBackupFromText\(\)"/);
+    assert.match(html, /Phone storage/);
+    assert.match(html, /Retry Phone Save/);
+    assert.match(html, /Rollback snapshots/);
 });
 
 test('historical April customer sales import without changing current stock', () => {

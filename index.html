@@ -1589,6 +1589,35 @@
                             </button>
                         </div>
 
+                        <div class="mt-4 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Phone storage</p>
+                                    <p class="mt-1 text-sm font-black" x-text="phoneSaveMessage"></p>
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                        <span x-text="phoneStorageUsagePercent() + '% used'"></span>
+                                        <span aria-hidden="true"> · </span>
+                                        <span x-text="phoneStoragePersistent ? 'Protected from automatic cleanup' : 'Standard browser storage'"></span>
+                                    </p>
+                                </div>
+                                <button @click="retryPhoneSave()" :disabled="phoneSaveStatus === 'saving'" class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200 disabled:opacity-40 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/15">Retry Phone Save</button>
+                            </div>
+                            <p x-show="phoneStorageWarning" x-text="phoneStorageWarning" class="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300"></p>
+                        </div>
+
+                        <div x-show="phoneRecoverySnapshots.length" class="mt-4 space-y-2">
+                            <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Rollback snapshots</p>
+                            <template x-for="snapshot in phoneRecoverySnapshots" :key="snapshot.id">
+                                <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-800">
+                                    <div>
+                                        <p class="font-bold" x-text="snapshot.reason === 'cloud-restore' ? 'Before cloud restore' : 'Phone recovery point'"></p>
+                                        <p class="mt-1 text-slate-500 dark:text-slate-400" x-text="formatRecoveryDate(snapshot.createdAt)"></p>
+                                    </div>
+                                    <button @click="restorePhoneRecovery(snapshot.id)" class="rounded-lg bg-blue-50 px-3 py-2 font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-200">Restore</button>
+                                </div>
+                            </template>
+                        </div>
+
                         <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                             <div class="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
                                 <p class="font-bold uppercase tracking-wider text-slate-500">Sales</p>
@@ -2321,7 +2350,10 @@
                 phoneSaveStatus: 'loading',
                 phoneSaveMessage: 'Opening phone storage...',
                 phoneStorageWarning: '',
-                phoneStorageUsage: null,
+                phoneStorageUsage: 0,
+                phoneStorageQuota: 0,
+                phoneStoragePersistent: false,
+                phoneRecoverySnapshots: [],
                 pinLockEnabled: false,
                 pinLockHash: '',
                 pinLockCreatedAt: '',
@@ -2535,15 +2567,93 @@
                         return result;
                     }
 
-                    if (typeof this.phoneStorage.requestPersistence === 'function') {
-                        Promise.resolve(this.phoneStorage.requestPersistence()).catch(() => false);
-                    }
-                    if (typeof this.phoneStorage.estimate === 'function') {
-                        Promise.resolve(this.phoneStorage.estimate())
-                            .then(estimate => { this.phoneStorageUsage = estimate || null; })
-                            .catch(() => null);
-                    }
+                    this.requestPhoneStoragePersistence().catch(() => false);
+                    this.refreshPhoneStorageEstimate().catch(() => null);
+                    this.refreshPhoneRecoverySnapshots().catch(() => []);
                     return result;
+                },
+
+                getPhoneStorageUsagePercent(estimate = null) {
+                    const usage = Number(estimate?.usage ?? this.phoneStorageUsage ?? 0);
+                    const quota = Number(estimate?.quota ?? this.phoneStorageQuota ?? 0);
+                    if (!Number.isFinite(usage) || !Number.isFinite(quota) || quota <= 0) return 0;
+                    return Math.max(0, Math.min(100, Math.round((usage / quota) * 100)));
+                },
+
+                phoneStorageUsagePercent() {
+                    return this.getPhoneStorageUsagePercent();
+                },
+
+                getPhoneStorageWarning(estimate = null) {
+                    const percent = this.getPhoneStorageUsagePercent(estimate);
+                    return percent >= 80
+                        ? `Phone storage is ${percent}% full. Export a JSON backup and free browser storage soon.`
+                        : '';
+                },
+
+                async refreshPhoneStorageEstimate(storage = this.phoneStorage) {
+                    if (!storage?.estimate) return null;
+                    const estimate = await storage.estimate();
+                    this.phoneStorageUsage = Number(estimate?.usage) || 0;
+                    this.phoneStorageQuota = Number(estimate?.quota) || 0;
+                    const capacityWarning = this.getPhoneStorageWarning(estimate);
+                    if (capacityWarning || !this.phoneStorageWarning) this.phoneStorageWarning = capacityWarning;
+                    return estimate;
+                },
+
+                async requestPhoneStoragePersistence(storage = this.phoneStorage) {
+                    if (!storage?.requestPersistence) return false;
+                    try {
+                        this.phoneStoragePersistent = Boolean(await storage.requestPersistence());
+                    } catch (error) {
+                        this.phoneStoragePersistent = false;
+                    }
+                    return this.phoneStoragePersistent;
+                },
+
+                async refreshPhoneRecoverySnapshots(storage = this.phoneStorage) {
+                    if (!storage?.listRecoveries) {
+                        this.phoneRecoverySnapshots = [];
+                        return this.phoneRecoverySnapshots;
+                    }
+                    this.phoneRecoverySnapshots = (await storage.listRecoveries()).slice(0, 3);
+                    return this.phoneRecoverySnapshots;
+                },
+
+                formatRecoveryDate(value) {
+                    if (!value) return 'Unknown date';
+                    const date = new Date(value);
+                    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+                },
+
+                async restorePhoneRecovery(id) {
+                    if (!this.phoneStorageReady || !this.phoneStorage?.restoreRecovery) return false;
+                    if (typeof confirm === 'function' &&
+                        !confirm('Restore this phone recovery point and replace the current records?')) return false;
+                    try {
+                        const restoredData = await this.phoneStorage.restoreRecovery(id);
+                        if (!this.hasBackupBusinessData(restoredData)) throw new Error('Recovery data is invalid.');
+                        this.applyPersistedState(restoredData);
+                        this.markLocalSyncChange();
+                        this.queueSyncPush();
+                        this.phoneSaveStatus = 'saved';
+                        this.phoneSaveMessage = 'Recovery point restored on phone';
+                        await this.refreshPhoneRecoverySnapshots();
+                        return true;
+                    } catch (error) {
+                        this.phoneSaveStatus = 'error';
+                        this.phoneSaveMessage = 'Recovery restore failed';
+                        this.phoneStorageWarning = error?.message || 'Recovery restore failed.';
+                        return false;
+                    }
+                },
+
+                async retryPhoneSave() {
+                    if (!this.phoneStorageReady) return false;
+                    this.persistState({ sync: false });
+                    const saved = await this.flushPhoneStorage();
+                    if (saved && this.syncPendingChanges) this.queueSyncPush();
+                    return saved;
                 },
 
                 setupPhoneStorageLifecycle() {
@@ -3925,6 +4035,7 @@
                         if (this.phoneStorageReady && this.phoneStorage?.createRecovery) {
                             await this.phoneStorage.createRecovery(checkpointData, 'cloud-restore');
                             checkpointCreated = true;
+                            await this.refreshPhoneRecoverySnapshots();
                         }
 
                         const restoredData = this.normalizeBackupData(data.data);
