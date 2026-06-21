@@ -395,6 +395,99 @@ test('customer summaries group sales and calculate unpaid loan balances', () => 
     assert.equal(ben.lastPaidDateDisplay, 'May 4');
 });
 
+test('customer book reuses prepared summaries while search text changes', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 1, customer: 'Alice', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-01' },
+        { id: 2, customer: 'Bob', quantity: 2, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-02' }
+    ];
+
+    const originalBuilder = app.buildCustomerSummaries.bind(app);
+    let buildCount = 0;
+    app.buildCustomerSummaries = function countedCustomerSummaryBuild() {
+        buildCount += 1;
+        return originalBuilder();
+    };
+
+    assert.equal(app.getCustomerBookView().filtered.length, 2);
+    assert.equal(app.getCustomerBookView().filtered.length, 2);
+
+    app.customerSearch = 'ali';
+    assert.deepEqual(
+        Array.from(app.getCustomerBookView().filtered, customer => customer.name),
+        ['Alice']
+    );
+    assert.equal(app.getFilteredCustomerSummaries()[0].name, 'Alice');
+    assert.equal(app.getSelectedCustomerSummary().name, 'Alice');
+    assert.equal(buildCount, 1);
+});
+
+test('customer book cache invalidates after persisted business changes', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 1, customer: 'Alice', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-01' }
+    ];
+
+    const originalBuilder = app.buildCustomerSummaries.bind(app);
+    let buildCount = 0;
+    app.buildCustomerSummaries = function countedCustomerSummaryBuild() {
+        buildCount += 1;
+        return originalBuilder();
+    };
+
+    assert.deepEqual(Array.from(app.getCustomerSummaries(), customer => customer.name), ['Alice']);
+    app.sales.push({ id: 2, customer: 'Bob', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-02' });
+    assert.equal(app.persistState({ sync: false }), true);
+
+    assert.deepEqual(
+        Array.from(app.getCustomerSummaries(), customer => customer.name),
+        ['Alice', 'Bob']
+    );
+    assert.equal(buildCount, 2);
+});
+
+test('customer book cache invalidates when persisted state is replaced', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 1, customer: 'Alice', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-01' }
+    ];
+
+    const originalBuilder = app.buildCustomerSummaries.bind(app);
+    let buildCount = 0;
+    app.buildCustomerSummaries = function countedCustomerSummaryBuild() {
+        buildCount += 1;
+        return originalBuilder();
+    };
+
+    assert.equal(app.getCustomerSummaries()[0].name, 'Alice');
+    assert.equal(app.applyPersistedState({
+        inventory: 100,
+        sales: [
+            { id: 2, customer: 'Bob', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-02' }
+        ],
+        expenses: [],
+        config: { regularPrice: 250, loanPrice: 270 }
+    }), true);
+
+    assert.deepEqual(Array.from(app.getCustomerSummaries(), customer => customer.name), ['Bob']);
+    assert.equal(buildCount, 2);
+});
+
+test('customer book keeps an explicit selection while filtering the list', () => {
+    const app = loadEggApp();
+    app.sales = [
+        { id: 1, customer: 'Alice', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-01' },
+        { id: 2, customer: 'Bob', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-02' }
+    ];
+    app.selectedCustomerKey = app.getCustomerKey('Alice');
+    app.customerSearch = 'bob';
+
+    const view = app.getCustomerBookView();
+    assert.deepEqual(Array.from(view.filtered, customer => customer.name), ['Bob']);
+    assert.equal(view.selected.name, 'Alice');
+    assert.equal(view.isEmpty, false);
+});
+
 test('customer search selects customers and collects one loan from customer page', () => {
     const app = loadEggApp();
     app.sales = [

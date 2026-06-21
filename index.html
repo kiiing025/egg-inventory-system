@@ -2297,6 +2297,9 @@
                     history: true
                 },
                 salesLedgerCache: null,
+                customerBookRevision: 0,
+                customerSummaryCache: null,
+                customerBookViewCache: null,
                 showMobileMoreMenu: false,
                 customerSearch: '',
                 selectedCustomerKey: '',
@@ -2521,6 +2524,7 @@
                     if (savedData.config) this.config = savedData.config;
                     this.ensureEggCatalog();
                     this.normalizeHistoricalAprilSales();
+                    this.invalidateCustomerBookCache();
                     return true;
                 },
 
@@ -3068,7 +3072,15 @@
                     return missingSales.length;
                 },
 
+                invalidateCustomerBookCache() {
+                    this.customerBookRevision = Number(this.customerBookRevision || 0) + 1;
+                    this.customerSummaryCache = null;
+                    this.customerBookViewCache = null;
+                    return this.customerBookRevision;
+                },
+
                 persistState(options = {}) {
+                    this.invalidateCustomerBookCache();
                     try {
                         localStorage.setItem('egg_app_data', JSON.stringify(this.getPersistableState()));
                         if (options.sync !== false) {
@@ -4672,7 +4684,7 @@
                     return Number.isNaN(timestamp) ? 0 : timestamp;
                 },
 
-                getCustomerSummaries() {
+                buildCustomerSummaries() {
                     const groups = new Map();
 
                     this.sales.forEach(sale => {
@@ -4742,11 +4754,58 @@
                         });
                 },
 
-                getFilteredCustomerSummaries() {
-                    const query = this.customerSearch.trim().toLowerCase();
+                getCustomerSummaries() {
+                    const revision = Number(this.customerBookRevision || 0);
+                    if (this.customerSummaryCache && this.customerSummaryCache.revision === revision) {
+                        return this.customerSummaryCache.summaries;
+                    }
+
+                    const summaries = this.buildCustomerSummaries();
+                    this.customerSummaryCache = { revision, summaries };
+                    this.customerBookViewCache = null;
+                    return summaries;
+                },
+
+                getCustomerBookView() {
+                    const revision = Number(this.customerBookRevision || 0);
+                    const query = String(this.customerSearch || '').trim().toLowerCase();
+                    const selectedKey = String(this.selectedCustomerKey || '');
+                    const cached = this.customerBookViewCache;
+
+                    if (
+                        cached &&
+                        cached.revision === revision &&
+                        cached.query === query &&
+                        cached.selectedKey === selectedKey
+                    ) {
+                        return cached.view;
+                    }
+
                     const summaries = this.getCustomerSummaries();
-                    if (!query) return summaries;
-                    return summaries.filter(customer => customer.name.toLowerCase().includes(query));
+                    const filtered = query
+                        ? summaries.filter(customer => customer.name.toLowerCase().includes(query))
+                        : summaries;
+                    const selected = summaries.find(customer => customer.key === selectedKey) ||
+                        filtered[0] ||
+                        summaries[0] ||
+                        null;
+                    const view = {
+                        filtered,
+                        selected,
+                        isEmpty: filtered.length === 0
+                    };
+
+                    this.customerBookViewCache = {
+                        revision,
+                        query,
+                        selectedKey,
+                        view
+                    };
+                    return view;
+                },
+
+                getFilteredCustomerSummaries() {
+                    return this.getCustomerBookView().filtered;
                 },
 
                 selectCustomer(key) {
@@ -5237,14 +5296,7 @@
                 },
 
                 getSelectedCustomerSummary() {
-                    const allSummaries = this.getCustomerSummaries();
-                    if (allSummaries.length === 0) return null;
-
-                    const selected = allSummaries.find(customer => customer.key === this.selectedCustomerKey);
-                    if (selected) return selected;
-
-                    const filtered = this.getFilteredCustomerSummaries();
-                    return filtered[0] || allSummaries[0];
+                    return this.getCustomerBookView().selected;
                 },
 
                 getCustomersWithOpenLoans() {
