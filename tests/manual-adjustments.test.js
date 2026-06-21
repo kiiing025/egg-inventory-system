@@ -1292,13 +1292,14 @@ test('weekly report opens as a modern modal sheet', () => {
     assert.doesNotMatch(html, /fixed left-0 top-0 h-screen w-96/);
 });
 
-test('spreadsheet export library is lazy-loaded to keep startup fast', () => {
+test('spreadsheet export library is bundled for offline use', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
 
-    assert.doesNotMatch(html, /<script src="https:\/\/unpkg\.com\/xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js"><\/script>/);
+    assert.match(html, /<script src="vendor\/xlsx\.full\.min\.js"><\/script>/);
+    assert.doesNotMatch(html, /unpkg\.com\/xlsx/);
     assert.match(html, /async exportToExcel\(\)/);
     assert.match(html, /ensureXlsxLoaded\(\)/);
-    assert.match(html, /loadExternalScript\('https:\/\/unpkg\.com\/xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js', 'XLSX'\)/);
+    assert.match(html, /Boolean\(window\.XLSX\)/);
 });
 
 test('app shell defaults to light mode and keeps dark mode opt-in', () => {
@@ -1461,7 +1462,7 @@ test('app exposes a sync page wired to Supabase configuration', () => {
     assert.match(html, /<script src="sync-config\.js"><\/script>/);
     assert.match(html, /@click="currentPage = 'sync'"/);
     assert.match(html, /x-show="currentPage === 'sync'"/);
-    assert.match(html, /supabase-js@2/);
+    assert.match(html, /<script src="vendor\/supabase\.js"><\/script>/);
     assert.match(syncConfig, /window\.YOLK_SYNC_CONFIG/);
     assert.match(syncConfig, /tableName:\s*'egg_app_state'/);
 });
@@ -2583,9 +2584,38 @@ test('activity-only backup payload is recognized and restored', () => {
     assert.equal(app.activityLog[0].id, 'backup-activity');
 });
 
-test('service worker cache version is bumped for Customer Book performance', () => {
+test('startup uses only local pinned runtime assets', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    assert.doesNotMatch(html, /<script[^>]+src="https?:\/\//);
+    assert.doesNotMatch(html, /<link[^>]+href="https?:\/\//);
+    assert.match(html, /href="assets\/app\.css"/);
+    assert.match(html, /src="vendor\/alpine\.min\.js"/);
+    assert.match(html, /src="vendor\/lucide\.min\.js"/);
+    assert.match(html, /src="vendor\/supabase\.js"/);
+    assert.match(html, /src="vendor\/xlsx\.full\.min\.js"/);
+});
+
+test('service worker precaches every offline runtime asset without HTML script fallbacks', () => {
     const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
-    assert.match(serviceWorker, /egg-inventory-cache-v31/);
+
+    for (const asset of [
+        './assets/app.css',
+        './vendor/alpine.min.js',
+        './vendor/lucide.min.js',
+        './vendor/supabase.js',
+        './vendor/xlsx.full.min.js'
+    ]) {
+        assert.ok(serviceWorker.includes(`'${asset}'`), `missing ${asset}`);
+    }
+
+    const htmlFallbacks = serviceWorker.match(/caches\.match\('\.\/index\.html'\)/g) || [];
+    assert.equal(htmlFallbacks.length, 1);
+});
+
+test('service worker cache version is bumped for offline phone storage', () => {
+    const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
+    assert.match(serviceWorker, /egg-inventory-cache-v32/);
 });
 
 test('deleted expense activity restores the original expense', () => {

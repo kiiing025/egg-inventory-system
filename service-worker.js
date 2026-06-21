@@ -1,11 +1,16 @@
-const CACHE_NAME = 'egg-inventory-cache-v31';
+const CACHE_NAME = 'egg-inventory-cache-v32';
 const APP_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './sync-config.js',
   './HEAD.png',
-  './YOLK..png'
+  './YOLK..png',
+  './assets/app.css',
+  './vendor/alpine.min.js',
+  './vendor/lucide.min.js',
+  './vendor/supabase.js',
+  './vendor/xlsx.full.min.js'
 ];
 
 self.addEventListener('install', event => {
@@ -64,12 +69,15 @@ self.addEventListener('fetch', event => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then(response => {
-        if (event.request.url.startsWith(self.location.origin)) {
+        if (response.ok && event.request.url.startsWith(self.location.origin)) {
           const responseCopy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseCopy));
         }
         return response;
-      }).catch(() => caches.match('./index.html'));
+      }).catch(() => new Response('Offline asset unavailable', {
+        status: 503,
+        statusText: 'Offline'
+      }));
     })
   );
 });
