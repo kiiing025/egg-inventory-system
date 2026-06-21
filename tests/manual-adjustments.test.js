@@ -446,6 +446,34 @@ test('customer book cache invalidates after persisted business changes', () => {
     assert.equal(buildCount, 2);
 });
 
+test('customer book cache invalidates even when local persistence fails', () => {
+    const storage = createStorage();
+    const app = loadEggApp(storage);
+    app.sales = [
+        { id: 1, customer: 'Alice', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-01' }
+    ];
+
+    const originalBuilder = app.buildCustomerSummaries.bind(app);
+    let buildCount = 0;
+    app.buildCustomerSummaries = function countedCustomerSummaryBuild() {
+        buildCount += 1;
+        return originalBuilder();
+    };
+
+    assert.deepEqual(Array.from(app.getCustomerSummaries(), customer => customer.name), ['Alice']);
+    app.sales.push({ id: 2, customer: 'Bob', quantity: 1, unitPrice: 250, type: 'Regular', paid: true, orderDate: '2026-06-02' });
+    storage.setItem = () => {
+        throw new Error('Storage full');
+    };
+
+    assert.equal(app.persistState({ sync: false }), false);
+    assert.deepEqual(
+        Array.from(app.getCustomerSummaries(), customer => customer.name),
+        ['Alice', 'Bob']
+    );
+    assert.equal(buildCount, 2);
+});
+
 test('customer book cache invalidates when persisted state is replaced', () => {
     const app = loadEggApp();
     app.sales = [
@@ -635,8 +663,20 @@ test('customer book edit controls are rendered', () => {
     assert.match(html, /Edit Name/);
     assert.match(html, /Remove Customer/);
     assert.match(html, /customerEditForm\.open/);
-    assert.match(html, /@click="openCustomerEdit\(getSelectedCustomerSummary\(\)\)"/);
+    assert.match(html, /@click="openCustomerEdit\(getCustomerBookView\(\)\.selected\)"/);
     assert.match(html, /@click="removeSelectedCustomer\(\)"/);
+});
+
+test('customer book template reads the cached customer view', () => {
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const customerSection = html.slice(
+        html.indexOf('<section x-show="currentPage === \'customers\'"'),
+        html.indexOf('<section x-show="currentPage === \'closing\'"')
+    );
+
+    assert.match(customerSection, /x-for="customer in getCustomerBookView\(\)\.filtered"/);
+    assert.match(customerSection, /x-show="getCustomerBookView\(\)\.isEmpty"/);
+    assert.match(customerSection, /x-if="getCustomerBookView\(\)\.selected"/);
 });
 
 test('customer order history can edit an order without changing current stock', () => {
@@ -2543,9 +2583,9 @@ test('activity-only backup payload is recognized and restored', () => {
     assert.equal(app.activityLog[0].id, 'backup-activity');
 });
 
-test('service worker cache version is bumped for success feedback', () => {
+test('service worker cache version is bumped for Customer Book performance', () => {
     const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
-    assert.match(serviceWorker, /egg-inventory-cache-v30/);
+    assert.match(serviceWorker, /egg-inventory-cache-v31/);
 });
 
 test('deleted expense activity restores the original expense', () => {
